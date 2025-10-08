@@ -281,19 +281,111 @@ class GaussJordanApp:
                 self.text_result.insert(tk.END, f"x{i+1} = {val}\n")
         elif tipo == "indeterminado":
             self.text_result.insert(tk.END, "El sistema tiene infinitas soluciones:\n\n")
-            
-            # 🔹 Solución en forma normal (ya la tenías)
+            # Solución en forma normal
             for i, val in enumerate(soluciones):
                 self.text_result.insert(tk.END, f"x{i+1} = {val}\n")
 
-            # 🔹 Extra: mostrar forma vectorial estilo libro
-            self.text_result.insert(tk.END, "\nForma vectorial:\n\n")
-            self.text_result.insert(tk.END, "x = [ x1  ]     [ 4/3 * x3 ]     [ 4/3 ]\n")
-            self.text_result.insert(tk.END, "    [ x2  ]  =  [    0     ]  =  [  0  ] * x3\n")
-            self.text_result.insert(tk.END, "    [ x3  ]     [   x3     ]     [  1  ]\n\n")
-            self.text_result.insert(tk.END, "donde v = [ 4/3 ]\n")
-            self.text_result.insert(tk.END, "           [  0  ]\n")
-            self.text_result.insert(tk.END, "           [  1  ]\n")
+            # --- Forma vectorial tipo libro de texto ---
+            self.text_result.insert(tk.END, "\nConjunto solución:\n\n")
+            num_vars = self.columnas - 1
+            libres = []
+            for i, val in enumerate(soluciones):
+                if isinstance(val, str) and "variable libre" in val:
+                    libres.append(i)
+
+            # Determinar si el sistema es homogéneo (todos los términos independientes son 0)
+            es_homogeneo = all(self.matriz_original[i][-1] == 0 for i in range(self.filas))
+
+            # Vector particular (todas libres en 0)
+            particular = []
+            for i in range(num_vars):
+                if isinstance(soluciones[i], str) and "variable libre" in soluciones[i]:
+                    particular.append("0")
+                else:
+                    expr = str(soluciones[i])
+                    for l in libres:
+                        expr = expr.replace(f"x{l+1}", "0")
+                    try:
+                        val = eval(expr)
+                    except Exception:
+                        val = expr
+                    particular.append(str(val))
+
+            # Vectores columna para cada variable libre
+            vectores_libres = []
+            for l in libres:
+                vector = []
+                for i in range(num_vars):
+                    if i == l:
+                        vector.append("1")
+                    else:
+                        expr = str(soluciones[i])
+                        if f"x{l+1}" in expr:
+                            import re
+                            match = re.search(rf"\(([^)]+)\)\*x{l+1}", expr)
+                            if match:
+                                coef = match.group(1)
+                            else:
+                                match = re.search(rf"([-\d/]+)\*x{l+1}", expr)
+                                coef = match.group(1) if match else "-1"
+                            vector.append(coef)
+                        else:
+                            vector.append("0")
+                vectores_libres.append(vector)
+
+            # Imprimir en formato columna tipo libro de texto, con corchetes alineados
+            def vector_columna_str(vector, ancho=6):
+                # Calcula el ancho máximo para alinear los números
+                maxlen = max(len(str(x)) for x in vector)
+                lines = []
+                for i, val in enumerate(vector):
+                    valstr = str(val).rjust(maxlen)
+                    if i == 0:
+                        lines.append(f"⎡ {valstr} ⎤")
+                    elif i == len(vector) - 1:
+                        lines.append(f"⎣ {valstr} ⎦")
+                    else:
+                        lines.append(f"⎢ {valstr} ⎥")
+                return lines
+
+            # Imprimir en formato columna tipo libro de texto, con corchetes alineados y x = centrado
+            def imprimir_vectores_con_x_igual(lines):
+                # Calcula el ancho total de la primera línea de vectores
+                total_ancho = len(lines[0])
+                x_eq = "x ="
+                # Calcula el espacio para centrar x = respecto al primer vector
+                primer_vector_inicio = lines[0].find("⎡")
+                if primer_vector_inicio < 0:
+                    primer_vector_inicio = 0
+                x_eq_pos = primer_vector_inicio - len(x_eq) - 1
+                if x_eq_pos < 0:
+                    x_eq_pos = 0
+                for i, l in enumerate(lines):
+                    if i == 0:
+                        self.text_result.insert(tk.END, " " * x_eq_pos + x_eq + " " + l + "\n")
+                    else:
+                        self.text_result.insert(tk.END, " " * (x_eq_pos + len(x_eq) + 1) + l + "\n")
+
+            if not es_homogeneo:
+                # --- Imprimir vector particular y libres alineados ---
+                nombres = [" " * 2] + [f"x{libres[idx]+1}" for idx in range(len(libres))]
+                vectores = [particular] + [vectores_libres[idx] for idx in range(len(libres))]
+                lines = self.vectores_columna_lado_a_lado(vectores, nombres, espacio_entre_vectores=4)
+                imprimir_vectores_con_x_igual(lines)
+                self.text_result.insert(
+                    tk.END,
+                    "\nDonde " + ", ".join([f"x{l+1}" for l in libres]) + " ∈ ℝ (parámetros libres).\n"
+                )
+            else:
+                # Solo combinación lineal si es homogéneo
+                nombres = [f"x{libres[idx]+1}" for idx in range(len(libres))]
+                vectores = [vectores_libres[idx] for idx in range(len(libres))]
+                lines = self.vectores_columna_lado_a_lado(vectores, nombres, espacio_entre_vectores=4)
+                imprimir_vectores_con_x_igual(lines)
+                self.text_result.insert(
+                    tk.END,
+                    "\nDonde " + ", ".join([f"x{l+1}" for l in libres]) + " ∈ ℝ (parámetros libres).\n"
+                )
 
         self.text_result.configure(state="disabled")
 
@@ -443,4 +535,46 @@ class GaussJordanApp:
         for fila in A:
             line = " ".join(str(x).rjust(ancho) for x in fila)
             lines.append(line)
+        return lines
+
+    # ---------------------------------------------------------
+    # Imprime varios vectores columna alineados y sumados
+    # ---------------------------------------------------------
+    def vectores_columna_lado_a_lado(self, vectores, nombres, espacio_entre_vectores=4):
+        n = len(vectores[0])
+        m = len(vectores)
+        # Encabezados: x3, + x4, + x5, ...
+        encabezados = [nombres[0]] + [f"+ {nombres[idx]}" for idx in range(1, m)]
+        max_encabezado = max(len(e) for e in encabezados)
+        max_num_len = max(len(str(v[fila])) for v in vectores for fila in range(n))
+        bloque_ancho = max_encabezado + 3 + max_num_len + 2  # espacios y corchetes
+
+        sep = " " * espacio_entre_vectores
+
+        lines = []
+        for fila in range(n):
+            line = ""
+            for idx, v in enumerate(vectores):
+                valstr = str(v[fila]).rjust(max_num_len)
+                # Corchetes según la fila
+                if fila == 0:
+                    corchete_izq = "⎡"
+                    corchete_der = "⎤"
+                elif fila == n - 1:
+                    corchete_izq = "⎣"
+                    corchete_der = "⎦"
+                else:
+                    corchete_izq = "⎢"
+                    corchete_der = "⎥"
+                # Encabezado solo en la primera fila
+                if fila == 0:
+                    encabezado = encabezados[idx].rjust(max_encabezado)
+                    bloque = f"{encabezado} {corchete_izq} {valstr} {corchete_der}"
+                else:
+                    bloque = " " * max_encabezado + f" {corchete_izq} {valstr} {corchete_der}"
+                bloque = bloque.ljust(bloque_ancho)
+                if idx < m - 1:
+                    bloque += sep
+                line += bloque
+            lines.append(line.rstrip())
         return lines
