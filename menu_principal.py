@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from gauss_jordan_app import GaussJordanApp
 from menu_matrices import MenuMatrices
+from independencia_lineal import IndependenciaLinealApp
 
 class MenuPrincipal:
     def __init__(self, root):
@@ -44,6 +45,9 @@ class MenuPrincipal:
         ttk.Button(root, text="Operaciones con matrices",
                    style="Primary.TButton", command=self.abrir_matrices).pack(pady=10)
 
+        ttk.Button(root, text="Independencia lineal de vectores",
+                   style="Primary.TButton", command=self.abrir_independencia_lineal).pack(pady=10)
+
     # ======================
     # Métodos
     # ======================
@@ -57,6 +61,12 @@ class MenuPrincipal:
         self.root.destroy()
         root2 = tk.Tk()
         MenuMatrices(root2, lambda: self.volver_inicio(root2))
+        root2.mainloop()
+
+    def abrir_independencia_lineal(self):
+        self.root.destroy()
+        root2 = tk.Tk()
+        IndependenciaLinealApp(root2, lambda: self.volver_inicio(root2))
         root2.mainloop()
 
     def volver_inicio(self, ventana_actual):
