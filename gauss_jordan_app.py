@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from fractions import Fraction
 from copy import deepcopy
+from independencia_lineal import son_linealmente_independientes
 
 
 class GaussJordanApp:
@@ -85,6 +86,11 @@ class GaussJordanApp:
         self.boton_volver = ttk.Button(frame_top, text="Volver al inicio",
                                        style="Primary.TButton", command=self.volver_callback)
         self.boton_volver.grid(row=0, column=6, padx=10)
+
+        # 🔹 Botón para verificar independencia de columnas
+        ttk.Button(frame_top, text="Verificar independencia",
+                   style="Primary.TButton", command=self.verificar_independencia_columnas).grid(
+            row=0, column=7, padx=10)
 
         # Contenedor de la matriz
         self.frame_matriz = ttk.Frame(self.root, padding=20)
@@ -578,3 +584,25 @@ class GaussJordanApp:
                 line += bloque
             lines.append(line.rstrip())
         return lines
+
+    # ---------------------------------------------------------
+    # Verificar independencia de columnas
+    # ---------------------------------------------------------
+    def verificar_independencia_columnas(self):
+        # Toma la matriz sin la última columna (términos independientes)
+        matriz = []
+        for i in range(self.filas):
+            fila = []
+            for j in range(self.columnas - 1):
+                val_str = self.entries[i][j].get().strip()
+                if val_str == "":
+                    val_str = "0"
+                fila.append(float(val_str))
+            matriz.append(fila)
+        # Transponer para obtener columnas como vectores
+        columnas = [ [matriz[i][j] for i in range(self.filas)] for j in range(self.columnas - 1) ]
+        independiente, justificacion = son_linealmente_independientes(columnas)
+        messagebox.showinfo(
+            "Independencia de columnas",
+            ("INDEPENDIENTES\n\n" if independiente else "DEPENDIENTES\n\n") + justificacion
+        )
