@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 from suma_matrices_app import SumaMatricesApp
 from resta_matrices_app import RestaMatricesApp
 from multiplicacion_matrices_app import MultiplicacionMatricesApp
+from transpuesta_matriz_app import TranspuestaMatrizApp
 
 
 class MenuMatrices:
@@ -38,6 +39,9 @@ class MenuMatrices:
         # 🔹 Frame fijo en la parte inferior para el botón volver
         self.frame_volver_fijo = ttk.Frame(root)
         self.frame_volver_fijo.pack(side="bottom", fill="x")
+        ttk.Button(root, text="Transpuesta de matriz", style="Primary.TButton",
+                   command=self.transpuesta_matriz).pack(pady=10)
+
         self.boton_volver = ttk.Button(self.frame_volver_fijo, text="Volver al inicio", style="Back.TButton",
                                        command=self.volver_callback)
         self.boton_volver.pack(pady=10)
@@ -57,6 +61,18 @@ class MenuMatrices:
             SumaMatricesApp(top, volver_callback=self.volver_callback)
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error al abrir Suma de matrices: {e}")
+        try:
+            self.boton_volver.lift()
+        except Exception:
+            pass
+
+    def transpuesta_matriz(self):
+        try:
+            self.root.withdraw()
+            top = tk.Toplevel(self.root)
+            TranspuestaMatrizApp(top, volver_callback=self.volver_callback)
+        except Exception as e:
+            messagebox.showerror("Error", f"Ocurrio un error al abrir Transpuesta de matriz: {e}")
         try:
             self.boton_volver.lift()
         except Exception:
