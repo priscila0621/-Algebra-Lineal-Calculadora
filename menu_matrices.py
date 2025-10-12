@@ -4,6 +4,7 @@ from suma_matrices_app import SumaMatricesApp
 from resta_matrices_app import RestaMatricesApp
 from multiplicacion_matrices_app import MultiplicacionMatricesApp
 from transpuesta_matriz_app import TranspuestaMatrizApp
+from inversa_matriz_app import InversaMatrizApp
 
 
 class MenuMatrices:
@@ -39,6 +40,8 @@ class MenuMatrices:
         # 🔹 Frame fijo en la parte inferior para el botón volver
         self.frame_volver_fijo = ttk.Frame(root)
         self.frame_volver_fijo.pack(side="bottom", fill="x")
+        ttk.Button(root, text="Inversa de matriz", style="Primary.TButton",
+                   command=self.inversa_matriz).pack(pady=10)
         ttk.Button(root, text="Transpuesta de matriz", style="Primary.TButton",
                    command=self.transpuesta_matriz).pack(pady=10)
 
@@ -61,6 +64,18 @@ class MenuMatrices:
             SumaMatricesApp(top, volver_callback=self.volver_callback)
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error al abrir Suma de matrices: {e}")
+        try:
+            self.boton_volver.lift()
+        except Exception:
+            pass
+
+    def inversa_matriz(self):
+        try:
+            self.root.withdraw()
+            top = tk.Toplevel(self.root)
+            InversaMatrizApp(top, volver_callback=self.volver_callback)
+        except Exception as e:
+            messagebox.showerror("Error", f"Ocurrio un error al abrir Inversa de matriz: {e}")
         try:
             self.boton_volver.lift()
         except Exception:
