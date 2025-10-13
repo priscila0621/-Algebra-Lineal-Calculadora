@@ -411,23 +411,37 @@ class InversaMatrizApp:
     # Formato: operación vertical tipo libro y matriz aumentada
     # ---------------------------------------------------------
     def _format_operacion_vertical_lines(self, fila_pivote, fila_actual, factor, fila_result, idx_piv, idx_obj):
-        # filas completas (A|I) ya concatenadas y numéricas
-        ancho = max(len(str(x)) for x in fila_result) if fila_result else 1
+        # Alinear etiquetas y celdas considerando todas las filas involucradas
+        todos = fila_pivote + fila_actual + fila_result
+        ancho = max((len(str(x)) for x in todos), default=1)
 
-        def fmt(lst):
-            return " ".join(str(x).rjust(ancho) for x in lst)
+        def fmt_with_bar(lst):
+            # Inserta una barra entre A e I y alinea cada celda
+            n2 = len(lst) // 2 if len(lst) % 2 == 0 else len(lst)
+            left = " ".join(str(x).rjust(ancho) for x in lst[:n2])
+            right = " ".join(str(x).rjust(ancho) for x in lst[n2:])
+            if right:
+                return f"{left}   |   {right}"
+            return left
 
         escala = [(-factor) * val for val in fila_pivote]
-        if factor < 0:
-            factor_str = f"+{abs(factor)}"
-        else:
-            factor_str = f"-{factor}"
+        factor_str = f"+{abs(factor)}" if factor < 0 else f"-{factor}"
+
+        lab1 = f"{factor_str}R{idx_piv} : "
+        lab2 = f"+R{idx_obj} : "
+        lab3 = f"=R{idx_obj} : "
+        lab_w = max(len(l) for l in (lab1, lab2, lab3))
+
+        body1 = fmt_with_bar(escala)
+        body2 = fmt_with_bar(fila_actual)
+        body3 = fmt_with_bar(fila_result)
+        dash = "-" * len(body3)
 
         lines = [
-            f"{factor_str}R{idx_piv} : {fmt(escala)}",
-            f"+R{idx_obj}   : {fmt(fila_actual)}",
-            " " * 10 + "-" * (ancho * len(fila_result) + max(len(fila_result) - 1, 0)),
-            f"=R{idx_obj}   : {fmt(fila_result)}",
+            lab1.ljust(lab_w) + body1,
+            lab2.ljust(lab_w) + body2,
+            " " * lab_w + dash,
+            lab3.ljust(lab_w) + body3,
         ]
         return lines
 
