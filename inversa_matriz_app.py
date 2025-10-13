@@ -42,9 +42,42 @@ class InversaMatrizApp:
         self.bg = "#ffe4e6"
         self.entry_bg = "#fff0f5"
 
-        # contenedor principal
-        container = tk.Frame(self.root, bg=self.bg)
-        container.pack(fill="both", expand=True, padx=16, pady=12)
+        # contenedor principal con scroll (toda la ventana desplazable)
+        outer = tk.Frame(self.root, bg=self.bg)
+        outer.pack(fill="both", expand=True, padx=16, pady=12)
+        outer.rowconfigure(0, weight=1)
+        outer.columnconfigure(0, weight=1)
+
+        self.canvas = tk.Canvas(outer, bg=self.bg, highlightthickness=0)
+        self.vscroll = ttk.Scrollbar(outer, orient="vertical", command=self.canvas.yview)
+        self.hscroll = ttk.Scrollbar(outer, orient="horizontal", command=self.canvas.xview)
+        self.canvas.configure(yscrollcommand=self.vscroll.set, xscrollcommand=self.hscroll.set)
+
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+        self.vscroll.grid(row=0, column=1, sticky="ns")
+        self.hscroll.grid(row=1, column=0, sticky="ew")
+
+        container = tk.Frame(self.canvas, bg=self.bg)
+        self.container_window = self.canvas.create_window((0, 0), window=container, anchor="nw")
+
+        def _update_scrollregion(event=None):
+            self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+        def _expand_width(event):
+            # Hace que el contenido use todo el ancho visible
+            self.canvas.itemconfigure(self.container_window, width=event.width)
+
+        container.bind("<Configure>", _update_scrollregion)
+        self.canvas.bind("<Configure>", _expand_width)
+
+        # Desplazamiento con la rueda del mouse
+        def _on_mousewheel(event):
+            try:
+                delta = int(-1 * (event.delta / 120))
+            except Exception:
+                delta = -1
+            self.canvas.yview_scroll(delta, "units")
+        self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
         # encabezado
         tk.Label(container, text="Inversa de Matriz", font=("Segoe UI", 26, "bold"),
@@ -204,9 +237,13 @@ class InversaMatrizApp:
         pasos_frame.pack(fill="both", expand=True)
         scrollbar = ttk.Scrollbar(pasos_frame)
         scrollbar.pack(side="right", fill="y")
-        self.pasos_text = tk.Text(pasos_frame, height=10, yscrollcommand=scrollbar.set, bg="white")
+        self.pasos_text = tk.Text(pasos_frame, height=10, wrap="none", yscrollcommand=scrollbar.set, bg="white")
         self.pasos_text.pack(side="left", fill="both", expand=True)
         scrollbar.config(command=self.pasos_text.yview)
+        # scroll horizontal para pasos (cuando hay líneas largas)
+        scrollbar_x = ttk.Scrollbar(pasos_frame, orient="horizontal", command=self.pasos_text.xview)
+        scrollbar_x.pack(side="bottom", fill="x")
+        self.pasos_text.configure(xscrollcommand=scrollbar_x.set)
         # estilos para encabezados/comentarios en pasos detallados
         try:
             self.pasos_text.tag_configure("bold", font=("Consolas", 12, "bold"))
@@ -263,23 +300,25 @@ class InversaMatrizApp:
         right = tk.Frame(top, bg=self.bg)
         right.pack(side="left", expand=True, padx=(10, 0))
 
-        # columna izquierda: A y A^t
+        # columna izquierda: A (no mostramos A^t para evitar confusiones)
         tk.Label(left, text="A =", font=("Segoe UI", 16, "bold"), bg=self.bg, fg="#b91c1c").pack()
         self._render_matrix(left, A)
 
-        At = [list(row) for row in zip(*A)]
-        tk.Label(left, text="A^t =", font=("Segoe UI", 16, "bold"), bg=self.bg, fg="#b91c1c").pack(pady=(12, 0))
-        self._render_matrix(left, At)
-
-        # columna derecha: |A| paso a paso y Adj(A^t)
+        # columna derecha: |A| paso a paso y Adj(A)
         tk.Label(right, text="|A|", font=("Segoe UI", 16, "bold"), bg=self.bg, fg="#b91c1c").pack()
         pasos_frame = tk.Frame(right, bg=self.bg)
         pasos_frame.pack(fill="both", expand=True)
-        scrollbar = ttk.Scrollbar(pasos_frame)
-        scrollbar.pack(side="right", fill="y")
-        pasos_text = tk.Text(pasos_frame, height=10, yscrollcommand=scrollbar.set, bg="white")
+        scrollbar_y = ttk.Scrollbar(pasos_frame, orient="vertical")
+        scrollbar_y.pack(side="right", fill="y")
+        pasos_text = tk.Text(
+            pasos_frame, height=10, wrap="none",
+            yscrollcommand=scrollbar_y.set, bg="white"
+        )
         pasos_text.pack(side="left", fill="both", expand=True)
-        scrollbar.config(command=pasos_text.yview)
+        scrollbar_y.config(command=pasos_text.yview)
+        scrollbar_x = ttk.Scrollbar(pasos_frame, orient="horizontal", command=pasos_text.xview)
+        scrollbar_x.pack(side="bottom", fill="x")
+        pasos_text.configure(xscrollcommand=scrollbar_x.set)
 
         pasos_text.insert("end", "1) Cálculo del determinante\n")
         if n == 1:
@@ -296,18 +335,19 @@ class InversaMatrizApp:
             a11,a12,a13 = A[0]
             a21,a22,a23 = A[1]
             a31,a32,a33 = A[2]
-            s1 = a11*a22*a33
-            s2 = a12*a23*a31
-            s3 = a13*a21*a32
-            t1 = a13*a22*a31
-            t2 = a11*a23*a32
-            t3 = a12*a21*a33
-            pasos_text.insert("end", f"Sarrus (diag. principales): {a11}·{a22}·{a33} + {a12}·{a23}·{a31} + {a13}·{a21}·{a32}\n")
-            pasos_text.insert("end", f"= {s1} + {s2} + {s3}\n")
-            pasos_text.insert("end", f"Sarrus (diag. secundarias): {a13}·{a22}·{a31} + {a11}·{a23}·{a32} + {a12}·{a21}·{a33}\n")
-            pasos_text.insert("end", f"= {t1} + {t2} + {t3}\n")
-            det = s1 + s2 + s3 - (t1 + t2 + t3)
-            pasos_text.insert("end", f"|A| = (suma principales) - (suma secundarias) = {det}\n")
+            pasos_text.insert("end", "Expansión por cofactores en la primera fila:\n")
+            # Menores 2x2 y cofactores
+            M11 = a22*a33 - a23*a32
+            M12 = a21*a33 - a23*a31
+            M13 = a21*a32 - a22*a31
+            C11 = M11
+            C12 = -M12
+            C13 = M13
+            pasos_text.insert("end", f"M11 = det([[{a22}, {a23}], [{a32}, {a33}]]) = {M11};  C11 = (+)·M11 = {C11}\n")
+            pasos_text.insert("end", f"M12 = det([[{a21}, {a23}], [{a31}, {a33}]]) = {M12};  C12 = (-)·M12 = {C12}\n")
+            pasos_text.insert("end", f"M13 = det([[{a21}, {a22}], [{a31}, {a32}]]) = {M13};  C13 = (+)·M13 = {C13}\n")
+            det = a11*C11 + a12*C12 + a13*C13
+            pasos_text.insert("end", f"|A| = a11·C11 + a12·C12 + a13·C13 = ({a11})·({C11}) + ({a12})·({C12}) + ({a13})·({C13}) = {det}\n")
         else:
             messagebox.showerror("Método adjunta", "Solo disponible para n ≤ 3.")
             return
@@ -316,8 +356,8 @@ class InversaMatrizApp:
             messagebox.showerror("Sin inversa", "La matriz no es invertible (determinante 0).")
             return
 
-        tk.Label(right, text="Adj(A^t) =", font=("Segoe UI", 16, "bold"), bg=self.bg, fg="#b91c1c").pack(pady=(10, 0))
-        pasos_text.insert("end", "\n2) Matriz de cofactores (sobre A^t)\n")
+        tk.Label(right, text="Adj(A) =", font=("Segoe UI", 16, "bold"), bg=self.bg, fg="#b91c1c").pack(pady=(10, 0))
+        pasos_text.insert("end", "\n2) Matriz de cofactores de A\n")
 
         def sign(i,j):
             return Fraction(1) if (i+j)%2==0 else Fraction(-1)
@@ -326,9 +366,9 @@ class InversaMatrizApp:
             C = [[Fraction(1)]]
             pasos_text.insert("end", "C[1,1] = (+)·det([]) = 1\n")
         elif n == 2:
-            # cofactores de A^t equivalen a cofactores de A, solo que intercambia posiciones
-            a,b = At[0]
-            c,d = At[1]
+            # cofactores calculados directamente desde A
+            a,b = A[0]
+            c,d = A[1]
             # menores de 1x1 (el valor restante)
             m11, m12, m21, m22 = d, c, b, a
             c11 = sign(0,0)*m11
@@ -347,8 +387,8 @@ class InversaMatrizApp:
                     rows = [r for r in range(3) if r != i]
                     cols = [c for c in range(3) if c != j]
                     m = [
-                        [At[rows[0]][cols[0]], At[rows[0]][cols[1]]],
-                        [At[rows[1]][cols[0]], At[rows[1]][cols[1]]],
+                        [A[rows[0]][cols[0]], A[rows[0]][cols[1]]],
+                        [A[rows[1]][cols[0]], A[rows[1]][cols[1]]],
                     ]
                     mdet = m[0][0]*m[1][1] - m[0][1]*m[1][0]
                     s = sign(i,j)
@@ -359,21 +399,24 @@ class InversaMatrizApp:
                         f"C[{i+1},{j+1}] = ({'+' if s>0 else '-'})·{mdet} = {C[i][j]}\n",
                     )
 
-        # Adj(A^t) = C^T donde C son cofactores de A^t
-        Adj_At = [list(row) for row in zip(*C)]
+        # 3) Adj(A) = (Cof(A))^t (traspuesta de la matriz de cofactores)
+        pasos_text.insert("end", "\n3) Adj(A) = (Cof(A))^t (traspuesta de la matriz de cofactores)\n")
+        Adj_A = [list(row) for row in zip(*C)]
         adj_frame = tk.Frame(right, bg=self.bg)
         adj_frame.pack()
-        self._render_matrix(adj_frame, Adj_At)
+        self._render_matrix(adj_frame, Adj_A)
 
-        # sección final: A^{-1} = (1/|A|)·Adj(A^t)
+        # sección final: A^{-1} = (1/|A|)·Adj(A)
         bottom = tk.Frame(self.result_frame, bg=self.bg)
         bottom.pack(fill="x", pady=(10, 4))
-        tk.Label(bottom, text="A^{-1} = (1/|A|)·Adj(A^t)", font=("Segoe UI", 14, "bold"), bg=self.bg, fg="#b91c1c").pack()
+        tk.Label(bottom, text="A^{-1} = (1/|A|)·Adj(A)", font=("Segoe UI", 14, "bold"), bg=self.bg, fg="#b91c1c").pack()
 
-        inv = [[Adj_At[i][j] / det for j in range(n)] for i in range(n)]
+        inv = [[Adj_A[i][j] / det for j in range(n)] for i in range(n)]
         self._render_matrix(self.result_frame, inv)
-        pasos_text.insert("end", f"\nAdj(A^t) = C^T\n")
-        pasos_text.insert("end", f"A^{-1} = (1/{det})·Adj(A^t)\n")
+        pasos_text.insert("end", "\n3) Adj(A) = (Cof(A))^t\n")
+        pasos_text.insert("end", f"4) Como |A| = {det}, A^{-1} = (1/{det})·Adj(A)\n")
+        pasos_text.insert("end", f"\nAdj(A) = (Cof(A))^t\n")
+        pasos_text.insert("end", f"A^{-1} = (1/{det})·Adj(A)\n")
 
     # Construye la lista de pasos (descriptores) para Gauss-Jordan
     def _gauss_jordan_steps(self, A, I, collect_only=False):
@@ -674,3 +717,5 @@ class InversaMatrizApp:
                     self.volver_callback()
             except Exception:
                 pass
+
+
