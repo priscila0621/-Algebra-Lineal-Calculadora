@@ -207,6 +207,12 @@ class InversaMatrizApp:
         self.pasos_text = tk.Text(pasos_frame, height=10, yscrollcommand=scrollbar.set, bg="white")
         self.pasos_text.pack(side="left", fill="both", expand=True)
         scrollbar.config(command=self.pasos_text.yview)
+        # estilos para encabezados/comentarios en pasos detallados
+        try:
+            self.pasos_text.tag_configure("bold", font=("Consolas", 12, "bold"))
+            self.pasos_text.tag_configure("comment", font=("Consolas", 10, "italic"), foreground="#555")
+        except Exception:
+            pass
 
     def _render_augmented(self, A, I):
         n = self.n
@@ -238,15 +244,12 @@ class InversaMatrizApp:
             if self.var_animar.get():
                 self._start_animation(A, I)
             else:
-                ok, pasos = self._gauss_jordan_steps(A, I, collect_only=True)
+                ok, _ = self._gauss_jordan_steps(A, I, collect_only=True)
                 if not ok:
                     messagebox.showerror("Sin inversa", "La matriz no es invertible (determinante 0).")
                     return
-                # ejecutar todos los pasos sin animar
-                A2 = [row[:] for row in A]
-                I2 = [row[:] for row in I]
-                self._apply_steps(A2, I2, pasos, log_to_text=True)
-                self._render_augmented(A2, I2)
+                # pasos detallados tipo Gauss-Jordan (como en gauss_jordan_app)
+                self._render_detailed_gauss_jordan(A, I)
 
     # --------- Método de la adjunta (n<=3) con pasos detallados ----------
     def _calcular_inversa_adjunta(self, A):
@@ -403,6 +406,164 @@ class InversaMatrizApp:
             ok = self._apply_steps(Atest, Itest, pasos, log_to_text=False, simulate=True)
             return ok, pasos
         return True, pasos
+
+    # ---------------------------------------------------------
+    # Formato: operación vertical tipo libro y matriz aumentada
+    # ---------------------------------------------------------
+    def _format_operacion_vertical_lines(self, fila_pivote, fila_actual, factor, fila_result, idx_piv, idx_obj):
+        # filas completas (A|I) ya concatenadas y numéricas
+        ancho = max(len(str(x)) for x in fila_result) if fila_result else 1
+
+        def fmt(lst):
+            return " ".join(str(x).rjust(ancho) for x in lst)
+
+        escala = [(-factor) * val for val in fila_pivote]
+        if factor < 0:
+            factor_str = f"+{abs(factor)}"
+        else:
+            factor_str = f"-{factor}"
+
+        lines = [
+            f"{factor_str}R{idx_piv} : {fmt(escala)}",
+            f"+R{idx_obj}   : {fmt(fila_actual)}",
+            " " * 10 + "-" * (ancho * len(fila_result) + max(len(fila_result) - 1, 0)),
+            f"=R{idx_obj}   : {fmt(fila_result)}",
+        ]
+        return lines
+
+    def _format_augmented_lines(self, A, I):
+        # A e I son n x n
+        n = len(A)
+        if n == 0:
+            return []
+        maxw = 1
+        for i in range(n):
+            for v in A[i] + I[i]:
+                maxw = max(maxw, len(str(v)))
+        lines = []
+        for i in range(n):
+            left = " ".join(str(x).rjust(maxw) for x in A[i])
+            right = " ".join(str(x).rjust(maxw) for x in I[i])
+            lines.append(f"{left}   |   {right}")
+        return lines
+
+    def _insert_header_to_text(self, titulo, comentario=""):
+        # Inserta encabezado en self.pasos_text con estilos
+        self.pasos_text.insert("end", "Operación: ")
+        start = self.pasos_text.index("end")
+        self.pasos_text.insert("end", titulo)
+        end = self.pasos_text.index("end")
+        try:
+            self.pasos_text.tag_add("bold", start, end)
+        except Exception:
+            pass
+        if comentario:
+            self.pasos_text.insert("end", "  —  ")
+            c_start = self.pasos_text.index("end")
+            self.pasos_text.insert("end", comentario)
+            c_end = self.pasos_text.index("end")
+            try:
+                self.pasos_text.tag_add("comment", c_start, c_end)
+            except Exception:
+                pass
+        self.pasos_text.insert("end", "\n\n")
+
+    # ---------------------------------------------------------
+    # Genera y muestra pasos detallados Gauss-Jordan para [A|I]
+    # ---------------------------------------------------------
+    def _render_detailed_gauss_jordan(self, A, I):
+        n = self.n
+        # copias de trabajo
+        Aw = [row[:] for row in A]
+        Iw = [row[:] for row in I]
+
+        # limpiar área de pasos
+        self.pasos_text.delete("1.0", "end")
+
+        fila_pivote = 0
+        for col in range(n):
+            # buscar pivote no nulo
+            piv = None
+            for r in range(fila_pivote, n):
+                if Aw[r][col] != 0:
+                    piv = r
+                    break
+            if piv is None:
+                continue
+
+            # Intercambio si es necesario
+            if piv != fila_pivote:
+                Aw[fila_pivote], Aw[piv] = Aw[piv], Aw[fila_pivote]
+                Iw[fila_pivote], Iw[piv] = Iw[piv], Iw[fila_pivote]
+                self._insert_header_to_text(
+                    f"R{fila_pivote+1} ↔ R{piv+1}",
+                    f"Intercambio de filas para poner pivote ≠ 0 en columna {col+1}"
+                )
+                for line in self._format_augmented_lines(Aw, Iw):
+                    self.pasos_text.insert("end", line + "\n")
+                self.pasos_text.insert("end", "\n" + "-" * 110 + "\n\n")
+
+            # Normalizar fila pivote
+            a = Aw[fila_pivote][col]
+            if a == 0:
+                fila_pivote += 1
+                if fila_pivote >= n:
+                    break
+                continue
+            if a != 1:
+                Aw[fila_pivote] = [val / a for val in Aw[fila_pivote]]
+                Iw[fila_pivote] = [val / a for val in Iw[fila_pivote]]
+                self._insert_header_to_text(
+                    f"R{fila_pivote+1} → R{fila_pivote+1}/{_fmt(a)}",
+                    f"Normalización: pivote 1 en columna {col+1}"
+                )
+                for line in self._format_augmented_lines(Aw, Iw):
+                    self.pasos_text.insert("end", line + "\n")
+                self.pasos_text.insert("end", "\n" + "-" * 110 + "\n\n")
+
+            # Eliminar en otras filas
+            for r in range(n):
+                if r == fila_pivote:
+                    continue
+                f = Aw[r][col]
+                if f == 0:
+                    continue
+                fila_orig_A = Aw[r][:]
+                fila_orig_I = Iw[r][:]
+                fila_piv_A = Aw[fila_pivote][:]
+                fila_piv_I = Iw[fila_pivote][:]
+                # resultado
+                Aw[r] = [fila_orig_A[j] - f * fila_piv_A[j] for j in range(n)]
+                Iw[r] = [fila_orig_I[j] - f * fila_piv_I[j] for j in range(n)]
+                # formateo operación vertical sobre fila completa (A|I)
+                fila_piv_full = fila_piv_A + fila_piv_I
+                fila_orig_full = fila_orig_A + fila_orig_I
+                fila_res_full = Aw[r] + Iw[r]
+                oper_lines = self._format_operacion_vertical_lines(
+                    fila_piv_full, fila_orig_full, f, fila_res_full, fila_pivote + 1, r + 1
+                )
+                self._insert_header_to_text(
+                    f"R{r+1} → R{r+1} - ({_fmt(f)})R{fila_pivote+1}",
+                    f"Anular elemento en columna {col+1} usando la fila pivote"
+                )
+                # ensamblar lado a lado: oper_lines (izq) y matriz (der)
+                matriz_lines = self._format_augmented_lines(Aw, Iw)
+                max_left = max((len(s) for s in oper_lines), default=0)
+                sep = "   |   "
+                max_len = max(len(oper_lines), len(matriz_lines))
+                for i in range(max_len):
+                    left = oper_lines[i] if i < len(oper_lines) else ""
+                    right = matriz_lines[i] if i < len(matriz_lines) else ""
+                    line_text = left.ljust(max_left) + (sep if right else "") + right + "\n"
+                    self.pasos_text.insert("end", line_text)
+                self.pasos_text.insert("end", "\n" + "-" * 110 + "\n\n")
+
+            fila_pivote += 1
+            if fila_pivote >= n:
+                break
+
+        # render final en las grillas superiores
+        self._render_augmented(Aw, Iw)
 
     def _apply_steps(self, A, I, pasos, log_to_text=True, simulate=False):
         n = self.n
