@@ -258,6 +258,93 @@ class InversaMatrizApp:
                 self.lbl_A[i][j].config(text=_fmt(A[i][j]))
                 self.lbl_I[i][j].config(text=_fmt(I[i][j]))
 
+    # -----------------------------
+    # Comprobación c), d), e) vía RREF
+    # -----------------------------
+    def _rref_info(self, A):
+        """Devuelve (RREF, columnas_pivote, columnas_libres) usando Fraction.
+
+        Construye una copia de A y aplica Gauss‑Jordan completo.
+        """
+        n = len(A)
+        if n == 0:
+            return [], [], []
+        m = len(A[0])
+        M = [row[:] for row in A]
+        row = 0
+        piv_cols = []
+        for col in range(m):
+            if row >= n:
+                break
+            # buscar pivote no nulo en o debajo de 'row'
+            piv = None
+            for r in range(row, n):
+                if M[r][col] != 0:
+                    piv = r
+                    break
+            if piv is None:
+                continue
+            if piv != row:
+                M[row], M[piv] = M[piv], M[row]
+            a = M[row][col]
+            if a != 1:
+                M[row] = [v / a for v in M[row]]
+            for r in range(n):
+                if r == row:
+                    continue
+                f = M[r][col]
+                if f != 0:
+                    M[r] = [M[r][j] - f * M[row][j] for j in range(m)]
+            piv_cols.append(col)
+            row += 1
+        free_cols = [j for j in range(m) if j not in piv_cols]
+        return M, piv_cols, free_cols
+
+    def _explain_failure_cde(self, A, text_widget):
+        """Escribe en el text_widget la justificación usando c), d) y e)."""
+        R, piv_cols, free_cols = self._rref_info(A)
+        n = len(A)
+        # helper insert
+        def ins(s=""):
+            try:
+                text_widget.insert("end", s + "\n")
+            except Exception:
+                pass
+        ins("Verificación de invertibilidad por el Teorema de la Matriz Invertible")
+        ins("(c) Posiciones pivote, (d) Ax=0, (e) Columnas LI")
+        ins("")
+        ins("RREF de A:")
+        # formato sencillo
+        if R:
+            maxw = max(len(str(v)) for fila in R for v in fila)
+            for fila in R:
+                ins(" ".join(str(v).rjust(maxw) for v in fila))
+        ins("")
+        ins(f"Pivotes encontrados: {len(piv_cols)} de n = {n}")
+        if len(piv_cols) != n:
+            ins("(c) Falla: A no tiene n posiciones pivote.")
+        else:
+            ins("(c) Se cumple: A tiene n posiciones pivote.")
+        # (d) Construir una solución no trivial si hay libres
+        if free_cols:
+            j0 = free_cols[0]
+            x = [Fraction(0) for _ in range(n)]
+            x[j0] = Fraction(1)
+            for r, pc in enumerate(piv_cols):
+                if j0 < len(R[0]):
+                    x[pc] = -R[r][j0]
+            ins("")
+            ins("(d) Ecuación Ax = 0:")
+            ins("Existe solución NO trivial. Por ejemplo:")
+            ins("x = [ " + ", ".join(str(v) for v in x) + " ]^t")
+            ins("⇒ Falla (d): no solo la solución trivial.")
+            ins("")
+            ins("(e) Con esa combinación no trivial, las columnas de A son LD.")
+        else:
+            ins("")
+            ins("(d) Ax=0 solo tiene la solución trivial. Se cumple (d).")
+            ins("(e) Por lo tanto las columnas son LI. Se cumple (e).")
+
     def _calcular_inversa(self):
         for w in self.result_frame.winfo_children():
             w.destroy()
@@ -282,10 +369,8 @@ class InversaMatrizApp:
                 self._start_animation(A, I)
             else:
                 ok, _ = self._gauss_jordan_steps(A, I, collect_only=True)
-                if not ok:
-                    messagebox.showerror("Sin inversa", "La matriz no es invertible (determinante 0).")
-                    return
-                # pasos detallados tipo Gauss-Jordan (como en gauss_jordan_app)
+                # Siempre mostrar el procedimiento detallado. Si no es invertible,
+                # adentro se explicará con c), d) y e).
                 self._render_detailed_gauss_jordan(A, I)
 
     # --------- Método de la adjunta (n<=3) con pasos detallados ----------
@@ -538,6 +623,7 @@ class InversaMatrizApp:
         self.pasos_text.delete("1.0", "end")
 
         fila_pivote = 0
+        columnas_pivote = []
         for col in range(n):
             # buscar pivote no nulo
             piv = None
@@ -615,12 +701,47 @@ class InversaMatrizApp:
                     self.pasos_text.insert("end", line_text)
                 self.pasos_text.insert("end", "\n" + "-" * 110 + "\n\n")
 
+            columnas_pivote.append(col)
             fila_pivote += 1
             if fila_pivote >= n:
                 break
 
         # render final en las grillas superiores
         self._render_augmented(Aw, Iw)
+
+        # Comprobación por propiedades (c), (d) y (e)
+        if len(columnas_pivote) != n:
+            try:
+                self.pasos_text.insert("end", "Comprobación de invertibilidad (c, d, e)\n", ("bold",))
+            except Exception:
+                self.pasos_text.insert("end", "Comprobación de invertibilidad (c, d, e)\n")
+            self.pasos_text.insert("end", f"(c) Pivotes encontrados: {len(columnas_pivote)} de n = {n} → Falla (c).\n")
+            libres = [j for j in range(n) if j not in columnas_pivote]
+            if libres:
+                j0 = libres[0]
+                x = [Fraction(0) for _ in range(n)]
+                x[j0] = Fraction(1)
+                fila = 0
+                for pc in columnas_pivote:
+                    x[pc] = -Aw[fila][j0]
+                    fila += 1
+                self.pasos_text.insert("end", "(d) Ax = 0 tiene solución no trivial. Ejemplo:\n")
+                self.pasos_text.insert("end", "x = [ " + ", ".join(str(v) for v in x) + " ]^t\n")
+                self.pasos_text.insert("end", "⇒ Falla (d).\n")
+                self.pasos_text.insert("end", "(e) Con esa combinación no trivial, las columnas de A son LD.\n")
+            else:
+                self.pasos_text.insert("end", "(d) Ax=0 solo trivial, pero falta pivote ⇒ falla (c).\n")
+            messagebox.showerror("Sin inversa", "La matriz no es invertible: no tiene n pivotes (c).")
+            return
+        else:
+            # Caso invertible: confirmar (d) y (e)
+            try:
+                self.pasos_text.insert("end", "Comprobación de invertibilidad (c, d, e)\n", ("bold",))
+            except Exception:
+                self.pasos_text.insert("end", "Comprobación de invertibilidad (c, d, e)\n")
+            self.pasos_text.insert("end", f"(c) Pivotes encontrados: {len(columnas_pivote)} de n = {n} → OK.\n")
+            self.pasos_text.insert("end", "(d) Ax = 0 solo tiene la solución trivial.\n")
+            self.pasos_text.insert("end", "(e) Las columnas de A forman un conjunto linealmente independiente.\n")
 
     def _apply_steps(self, A, I, pasos, log_to_text=True, simulate=False):
         n = self.n
@@ -683,7 +804,10 @@ class InversaMatrizApp:
     def _start_animation(self, A, I):
         ok, pasos = self._gauss_jordan_steps(A, I, collect_only=True)
         if not ok:
-            messagebox.showerror("Sin inversa", "La matriz no es invertible (determinante 0).")
+            # No animamos; explicamos inmediatamente por (c), (d) y (e)
+            self.pasos_text.delete("1.0", "end")
+            self._explain_failure_cde(A, self.pasos_text)
+            messagebox.showerror("Sin inversa", "La matriz no es invertible por propiedades (c),(d),(e).")
             return
         # Copias mutables para animación
         self.A_anim = [row[:] for row in A]
@@ -697,12 +821,35 @@ class InversaMatrizApp:
 
     def _animate_next(self):
         if self.step_index >= len(self.steps):
-            return
+            # Animación terminada: confirmar (c), (d) y (e) si A quedó en identidad
+            try:
+                n = self.n
+                A = self.A_anim
+                is_I = True
+                for i in range(n):
+                    for j in range(n):
+                        if A[i][j] != (1 if i == j else 0):
+                            is_I = False
+                            break
+                    if not is_I:
+                        break
+                if is_I:
+                    try:
+                        self.pasos_text.insert("end", "Comprobación de invertibilidad (c, d, e)\n", ("bold",))
+                    except Exception:
+                        self.pasos_text.insert("end", "Comprobación de invertibilidad (c, d, e)\n")
+                    self.pasos_text.insert("end", f"(c) Pivotes encontrados: {n} de n = {n} → OK.\n")
+                    self.pasos_text.insert("end", "(d) Ax = 0 solo tiene la solución trivial.\n")
+                    self.pasos_text.insert("end", "(e) Las columnas de A forman un conjunto linealmente independiente.\n")
+            finally:
+                return
         # aplicar un paso
         step = [self.steps[self.step_index]]
         ok = self._apply_steps(self.A_anim, self.I_anim, step, log_to_text=True, simulate=False)
         if not ok:
-            messagebox.showerror("Sin inversa", "La matriz no es invertible (determinante 0).")
+            self.pasos_text.insert("end", "\nSe detectó que no hay n pivotes.\n")
+            self._explain_failure_cde(self.A_anim, self.pasos_text)
+            messagebox.showerror("Sin inversa", "La matriz no es invertible por propiedades (c),(d),(e).")
             return
         self.step_index += 1
         self.pasos_text.see("end")
