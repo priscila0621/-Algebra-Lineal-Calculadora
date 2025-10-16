@@ -1,0 +1,117 @@
+*** Begin Patch
+*** Update File: inversa_matriz_app.py
+@@
+-    # UI helpers para mostrar [A|I]
+-    def _build_augmented_view(self, n):
+-        wrapper = tk.Frame(self.result_frame, bg=self.bg)
+-        wrapper.pack(pady=6)
+-
+-        left_col = tk.Frame(wrapper, bg=self.bg)
+-        left_col.pack(side="left", padx=(0, 10))
+-        right_col = tk.Frame(wrapper, bg=self.bg)
+-        right_col.pack(side="left", padx=(10, 0))
+-
+-        tk.Label(left_col, text="A (trabajo)", font=("Segoe UI", 14, "bold"), bg=self.bg, fg="#b91c1c").pack()
+-        tk.Label(right_col, text="I / Inversa", font=("Segoe UI", 14, "bold"), bg=self.bg, fg="#b91c1c").pack()
+-
+-        self.grid_A = tk.Frame(left_col, bg=self.bg)
+-        self.grid_A.pack(pady=6)
+-        self.grid_I = tk.Frame(right_col, bg=self.bg)
+-        self.grid_I.pack(pady=6)
+-
+-        self.lbl_A = []
+-        self.lbl_I = []
+-        for i in range(n):
+-            ra = []
+-            ri = []
+-            for j in range(n):
+-                la = tk.Label(self.grid_A, text="", bg=self.bg, fg="#111", font=("Segoe UI", 11),
+-                              relief="groove", width=10, anchor="center")
+-                la.grid(row=i, column=j, padx=4, pady=4, sticky="nsew")
+-                li = tk.Label(self.grid_I, text="", bg=self.bg, fg="#111", font=("Segoe UI", 11),
+-                              relief="groove", width=10, anchor="center")
+-                li.grid(row=i, column=j, padx=4, pady=4, sticky="nsew")
+-                ra.append(la)
+-                ri.append(li)
+-            self.lbl_A.append(ra)
+-            self.lbl_I.append(ri)
+-
+-        # Área de pasos
+-        pasos_title = tk.Label(self.result_frame, text="Pasos detallados", font=("Segoe UI", 14, "bold"),
+-                               bg=self.bg, fg="#b91c1c")
+-        pasos_title.pack(pady=(10, 4))
+-        pasos_frame = tk.Frame(self.result_frame, bg=self.bg)
+-        pasos_frame.pack(fill="both", expand=True)
+-        scrollbar = ttk.Scrollbar(pasos_frame)
+-        scrollbar.pack(side="right", fill="y")
+-        self.pasos_text = tk.Text(pasos_frame, height=10, wrap="none", yscrollcommand=scrollbar.set, bg="white")
+-        self.pasos_text.pack(side="left", fill="both", expand=True)
+-        scrollbar.config(command=self.pasos_text.yview)
+-        # scroll horizontal para pasos (cuando hay líneas largas)
+-        scrollbar_x = ttk.Scrollbar(pasos_frame, orient="horizontal", command=self.pasos_text.xview)
+-        scrollbar_x.pack(side="bottom", fill="x")
+-        self.pasos_text.configure(xscrollcommand=scrollbar_x.set)
+-        # estilos para encabezados/comentarios en pasos detallados
+-        try:
+-            self.pasos_text.tag_configure("bold", font=("Consolas", 12, "bold"))
+-            self.pasos_text.tag_configure("comment", font=("Consolas", 10, "italic"), foreground="#555")
+-        except Exception:
+-            pass
++    # UI helpers para mostrar [A|I]
++    def _build_augmented_view(self, n, show_grids=True):
++        if show_grids:
++            wrapper = tk.Frame(self.result_frame, bg=self.bg)
++            wrapper.pack(pady=6)
++
++            left_col = tk.Frame(wrapper, bg=self.bg)
++            left_col.pack(side="left", padx=(0, 10))
++            right_col = tk.Frame(wrapper, bg=self.bg)
++            right_col.pack(side="left", padx=(10, 0))
++
++            tk.Label(left_col, text="A (trabajo)", font=("Segoe UI", 14, "bold"), bg=self.bg, fg="#b91c1c").pack()
++            tk.Label(right_col, text="I / Inversa", font=("Segoe UI", 14, "bold"), bg=self.bg, fg="#b91c1c").pack()
++
++            self.grid_A = tk.Frame(left_col, bg=self.bg)
++            self.grid_A.pack(pady=6)
++            self.grid_I = tk.Frame(right_col, bg=self.bg)
++            self.grid_I.pack(pady=6)
++
++            self.lbl_A = []
++            self.lbl_I = []
++            for i in range(n):
++                ra = []
++                ri = []
++                for j in range(n):
++                    la = tk.Label(self.grid_A, text="", bg=self.bg, fg="#111", font=("Segoe UI", 11),
++                                  relief="groove", width=10, anchor="center")
++                    la.grid(row=i, column=j, padx=4, pady=4, sticky="nsew")
++                    li = tk.Label(self.grid_I, text="", bg=self.bg, fg="#111", font=("Segoe UI", 11),
++                                  relief="groove", width=10, anchor="center")
++                    li.grid(row=i, column=j, padx=4, pady=4, sticky="nsew")
++                    ra.append(la)
++                    ri.append(li)
++                self.lbl_A.append(ra)
++                self.lbl_I.append(ri)
++
++        # Área de pasos (siempre visible)
++        pasos_title = tk.Label(self.result_frame, text="Pasos detallados", font=("Segoe UI", 14, "bold"),
++                               bg=self.bg, fg="#b91c1c")
++        pasos_title.pack(pady=(10, 4))
++        pasos_frame = tk.Frame(self.result_frame, bg=self.bg)
++        pasos_frame.pack(fill="both", expand=True)
++        scrollbar = ttk.Scrollbar(pasos_frame)
++        scrollbar.pack(side="right", fill="y")
++        self.pasos_text = tk.Text(pasos_frame, height=10, wrap="none", yscrollcommand=scrollbar.set, bg="white")
++        self.pasos_text.pack(side="left", fill="both", expand=True)
++        scrollbar.config(command=self.pasos_text.yview)
++        # scroll horizontal para pasos (cuando hay líneas largas)
++        scrollbar_x = ttk.Scrollbar(pasos_frame, orient="horizontal", command=self.pasos_text.xview)
++        scrollbar_x.pack(side="bottom", fill="x")
++        self.pasos_text.configure(xscrollcommand=scrollbar_x.set)
++        # estilos para encabezados/comentarios en pasos detallados
++        try:
++            self.pasos_text.tag_configure("bold", font=("Consolas", 12, "bold"))
++            self.pasos_text.tag_configure("comment", font=("Consolas", 10, "italic"), foreground="#555")
++        except Exception:
++            pass
+*** End Patch

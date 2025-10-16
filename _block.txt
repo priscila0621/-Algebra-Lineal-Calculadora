@@ -1,0 +1,50 @@
+                if p != k:
+                    A[k], A[p] = A[p], A[k]
+                    I[k], I[p] = I[p], I[k]
+                    if log_to_text:
+                        self.pasos_text.insert("end", f"Intercambiar R{k+1}  R{p+1}\n")
+                else:
+                    if log_to_text:
+                        self.pasos_text.insert("end", f"Pivote en R{k+1} ya adecuado\n")
+            elif step[0] == "scale":
+                _, k = step
+                a = A[k][k]
+                if a == 0:
+                    return False
+                if a != 1:
+                    for j in range(n):
+                        A[k][j] /= a
+                        I[k][j] /= a
+                    if log_to_text:
+                        self.pasos_text.insert("end", f"R{k+1} := R{k+1} / {a}\n")
+                else:
+                    if log_to_text:
+                        self.pasos_text.insert("end", f"Pivote R{k+1} ya es 1\n")
+            elif step[0] == "elim":
+                _, i, k = step
+                if i == k:
+                    continue
+                f = A[i][k]
+                if f != 0:
+                    for j in range(n):
+                        A[i][j] -= f * A[k][j]
+                        I[i][j] -= f * I[k][j]
+                    if log_to_text:
+                        self.pasos_text.insert("end", f"R{i+1} := R{i+1} - ({_fmt(f)})*R{k+1}\n")
+                else:
+                    if log_to_text:
+                        self.pasos_text.insert("end", f"Columna {k+1}: R{i+1} ya tiene 0\n")
+
+            if not simulate:
+                self._render_augmented(A, I)
+        return True
+
+    # Animación paso a paso
+    def _start_animation(self, A, I):
+        ok, pasos = self._gauss_jordan_steps(A, I, collect_only=True)
+        if not ok:
+            # No animamos; explicamos inmediatamente por (c), (d) y (e)
+            self.pasos_text.delete("1.0", "end")
+            self._explain_failure_cde(A, self.pasos_text)
+            messagebox.showerror("Sin inversa", "No tiene n posiciones pivote (c). Entonces Ax=0 tiene solucion no trivial (d) y las columnas de A son dependientes (e).")
+            return
