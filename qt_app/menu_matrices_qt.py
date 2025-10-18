@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import (
+﻿from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFrame
 )
 from PySide6.QtCore import Qt
@@ -33,7 +33,7 @@ class MenuMatricesWindow(QMainWindow):
         title.setObjectName("Title")
         lay.addWidget(title)
 
-        subtitle = QLabel("Selecciona una operación. La migración a Qt continuará módulo por módulo.")
+        subtitle = QLabel("Selecciona una operaci\u00F3n.")
         subtitle.setObjectName("Subtitle")
         lay.addWidget(subtitle)
 
@@ -46,19 +46,18 @@ class MenuMatricesWindow(QMainWindow):
         actions.addWidget(make_theme_toggle_button(self))
         lay.addLayout(actions)
 
-        ops = [
-            "Suma de matrices",
-            "Resta de matrices",
-            "Multiplicación de matrices",
-            "Determinantes",
-            "Inversa de matriz",
-            "Transpuesta de matriz",
-        ]
-        for txt in ops:
-            b = QPushButton(txt)
-            b.setMinimumHeight(44)
-            b.setEnabled(False)
-            lay.addWidget(b)
+        btn_suma = QPushButton("Suma de matrices"); btn_suma.setMinimumHeight(44)
+        btn_suma.clicked.connect(self._open_suma); lay.addWidget(btn_suma)
+        btn_resta = QPushButton("Resta de matrices"); btn_resta.setMinimumHeight(44)
+        btn_resta.clicked.connect(self._open_resta); lay.addWidget(btn_resta)
+        btn_mult = QPushButton("Multiplicaci\u00F3n de matrices"); btn_mult.setMinimumHeight(44)
+        btn_mult.clicked.connect(self._open_mult); lay.addWidget(btn_mult)
+        btn_det = QPushButton("Determinantes"); btn_det.setMinimumHeight(44)
+        btn_det.clicked.connect(self._open_det); lay.addWidget(btn_det)
+        btn_trans = QPushButton("Transpuesta de matriz"); btn_trans.setMinimumHeight(44)
+        btn_trans.clicked.connect(self._open_trans); lay.addWidget(btn_trans)
+        btn_inv = QPushButton("Inversa de matriz"); btn_inv.setMinimumHeight(44)
+        btn_inv.clicked.connect(self._open_inv); lay.addWidget(btn_inv)
 
         lay.addStretch(1)
 
@@ -73,3 +72,38 @@ class MenuMatricesWindow(QMainWindow):
                 p.activateWindow()
         except Exception:
             self.close()
+
+    def _open_suma(self):
+        from .matrices_qt import SumaMatricesWindow
+        w = SumaMatricesWindow(parent=self)
+        w.showMaximized(); self._child = w
+
+    def _open_resta(self):
+        from .matrices_qt import RestaMatricesWindow
+        w = RestaMatricesWindow(parent=self)
+        w.showMaximized(); self._child = w
+
+    def _open_mult(self):
+        from .matrices_qt import MultiplicacionMatricesWindow
+        w = MultiplicacionMatricesWindow(parent=self)
+        w.showMaximized(); self._child = w
+
+    def _open_det(self):
+        from .matrices_qt import DeterminanteMatrizWindow
+        w = DeterminanteMatrizWindow(parent=self)
+        w.showMaximized(); self._child = w
+
+    def _open_trans(self):
+        from .matrices_qt import TranspuestaMatrizWindow
+        w = TranspuestaMatrizWindow(parent=self)
+        w.showMaximized(); self._child = w
+
+
+
+    def _open_inv(self):
+        from .matrices_qt import InversaMatrizWindow
+        w = InversaMatrizWindow(parent=self)
+        w.showMaximized(); self._child = w
+
+
+

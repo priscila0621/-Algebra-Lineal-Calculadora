@@ -1,4 +1,4 @@
-import tkinter as tk
+﻿import tkinter as tk
 from tkinter import ttk, messagebox
 from suma_matrices_app import SumaMatricesApp
 from resta_matrices_app import RestaMatricesApp
@@ -80,3 +80,4 @@ class MenuMatrices:
 
     def transpuesta_matriz(self):
         self._abrir_operacion(TranspuestaMatrizApp, "Transpuesta de matriz")
+

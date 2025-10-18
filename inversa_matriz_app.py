@@ -1,4 +1,4 @@
-﻿import tkinter as tk
+import tkinter as tk
 from tkinter import ttk, messagebox
 from fractions import Fraction
 
@@ -83,10 +83,10 @@ class InversaMatrizApp:
         tk.Label(container, text="Inversa de Matriz", font=("Segoe UI", 26, "bold"),
                  bg=self.bg, fg="#b91c1c").pack(pady=(10, 6))
 
-        # configuraciÃ³n
+        # configuración
         cfg = tk.Frame(container, bg=self.bg)
         cfg.pack(pady=6)
-        tk.Label(cfg, text="TamaÃ±o (n x n):", bg=self.bg).grid(row=0, column=0, padx=6, pady=6, sticky="e")
+        tk.Label(cfg, text="Tamaño (n x n):", bg=self.bg).grid(row=0, column=0, padx=6, pady=6, sticky="e")
         self.var_n = tk.StringVar(value="3")
         tk.Spinbox(cfg, from_=1, to=12, increment=1, width=6,
                    textvariable=self.var_n, justify="center", bg=self.entry_bg).grid(row=0, column=1, padx=6, pady=6)
@@ -104,10 +104,10 @@ class InversaMatrizApp:
         actions = tk.Frame(container, bg=self.bg)
         actions.pack(pady=(4, 8), fill="x")
 
-        # selecciÃ³n de mÃ©todo
+        # selección de método
         self.metodo = tk.StringVar(value="adj")  # adj (n<=3) o gj
-        ttk.Label(actions, text="MÃ©todo:", background=self.bg).pack(side="left", padx=(0,4))
-        ttk.Radiobutton(actions, text="Adjunta (nâ‰¤3)", variable=self.metodo, value="adj").pack(side="left", padx=4)
+        ttk.Label(actions, text="Método:", background=self.bg).pack(side="left", padx=(0,4))
+        ttk.Radiobutton(actions, text="Adjunta (n3)", variable=self.metodo, value="adj").pack(side="left", padx=4)
         ttk.Radiobutton(actions, text="Gauss-Jordan", variable=self.metodo, value="gj").pack(side="left", padx=4)
 
         self.var_animar = tk.BooleanVar(value=False)
@@ -229,7 +229,7 @@ class InversaMatrizApp:
             self.lbl_A.append(ra)
             self.lbl_I.append(ri)
 
-        # Ã¡rea de pasos
+        # área de pasos
         pasos_title = tk.Label(self.result_frame, text="Pasos detallados", font=("Segoe UI", 14, "bold"),
                                bg=self.bg, fg="#b91c1c")
         pasos_title.pack(pady=(10, 4))
@@ -240,7 +240,7 @@ class InversaMatrizApp:
         self.pasos_text = tk.Text(pasos_frame, height=10, wrap="none", yscrollcommand=scrollbar.set, bg="white")
         self.pasos_text.pack(side="left", fill="both", expand=True)
         scrollbar.config(command=self.pasos_text.yview)
-        # scroll horizontal para pasos (cuando hay lÃ­neas largas)
+        # scroll horizontal para pasos (cuando hay líneas largas)
         scrollbar_x = ttk.Scrollbar(pasos_frame, orient="horizontal", command=self.pasos_text.xview)
         scrollbar_x.pack(side="bottom", fill="x")
         self.pasos_text.configure(xscrollcommand=scrollbar_x.set)
@@ -262,12 +262,12 @@ class InversaMatrizApp:
                 self.lbl_I[i][j].config(text=_fmt(I[i][j]))
 
     # -----------------------------
-    # ComprobaciÃ³n c), d), e) vÃ­a RREF
+    # Comprobación c), d), e) vía RREF
     # -----------------------------
     def _rref_info(self, A):
         """Devuelve (RREF, columnas_pivote, columnas_libres) usando Fraction.
 
-        Construye una copia de A y aplica Gaussâ€‘Jordan completo.
+        Construye una copia de A y aplica GaussJordan completo.
         """
         n = len(A)
         if n == 0:
@@ -304,7 +304,7 @@ class InversaMatrizApp:
         return M, piv_cols, free_cols
 
     def _explain_failure_cde(self, A, text_widget):
-        """Escribe en el text_widget la justificaciÃ³n usando c), d) y e)."""
+        """Escribe en el text_widget la justificación usando c), d) y e)."""
         R, piv_cols, free_cols = self._rref_info(A)
         n = len(A)
         # helper insert
@@ -326,7 +326,7 @@ class InversaMatrizApp:
             ins(f"- (c) No tiene n posiciones pivote: {len(piv_cols)} de {n}.")
         else:
             ins(f"- (c) Tiene n posiciones pivote: {len(piv_cols)} de {n}.")
-        # (d) Construir una soluciÃ³n no trivial si hay libres
+        # (d) Construir una solución no trivial si hay libres
         if free_cols:
             j0 = free_cols[0]
             x = [Fraction(0) for _ in range(n)]
@@ -417,7 +417,7 @@ class InversaMatrizApp:
                 self._render_augmented(A, I)
                 self._render_detailed_gauss_jordan(A, I)
 
-    # --------- MÃ©todo de la adjunta (n<=3) con pasos detallados ----------
+    # --------- Método de la adjunta (n<=3) con pasos detallados ----------
     def _calcular_inversa_adjunta(self, A):
         n = self.n
 
@@ -449,7 +449,7 @@ class InversaMatrizApp:
         scrollbar_x.pack(side="bottom", fill="x")
         pasos_text.configure(xscrollcommand=scrollbar_x.set)
 
-        pasos_text.insert("end", "1) CÃ¡lculo del determinante\n")
+        pasos_text.insert("end", "1) Cálculo del determinante\n")
         if n == 1:
             det = A[0][0]
             pasos_text.insert("end", f"|A| = {det}\n")
@@ -457,14 +457,14 @@ class InversaMatrizApp:
             a,b = A[0]
             c,d = A[1]
             det = a*d - b*c
-            pasos_text.insert("end", f"|A| = a11Â·a22 - a12Â·a21\n")
-            pasos_text.insert("end", f"= ({a})Â·({d}) - ({b})Â·({c})\n")
+            pasos_text.insert("end", f"|A| = a11·a22 - a12·a21\n")
+            pasos_text.insert("end", f"= ({a})·({d}) - ({b})·({c})\n")
             pasos_text.insert("end", f"= {det}\n")
         elif n == 3:
             a11,a12,a13 = A[0]
             a21,a22,a23 = A[1]
             a31,a32,a33 = A[2]
-            pasos_text.insert("end", "ExpansiÃ³n por cofactores en la primera fila:\n")
+            pasos_text.insert("end", "Expansión por cofactores en la primera fila:\n")
             # Menores 2x2 y cofactores
             M11 = a22*a33 - a23*a32
             M12 = a21*a33 - a23*a31
@@ -472,13 +472,13 @@ class InversaMatrizApp:
             C11 = M11
             C12 = -M12
             C13 = M13
-            pasos_text.insert("end", f"M11 = det([[{a22}, {a23}], [{a32}, {a33}]]) = {M11};  C11 = (+)Â·M11 = {C11}\n")
-            pasos_text.insert("end", f"M12 = det([[{a21}, {a23}], [{a31}, {a33}]]) = {M12};  C12 = (-)Â·M12 = {C12}\n")
-            pasos_text.insert("end", f"M13 = det([[{a21}, {a22}], [{a31}, {a32}]]) = {M13};  C13 = (+)Â·M13 = {C13}\n")
+            pasos_text.insert("end", f"M11 = det([[{a22}, {a23}], [{a32}, {a33}]]) = {M11};  C11 = (+)·M11 = {C11}\n")
+            pasos_text.insert("end", f"M12 = det([[{a21}, {a23}], [{a31}, {a33}]]) = {M12};  C12 = (-)·M12 = {C12}\n")
+            pasos_text.insert("end", f"M13 = det([[{a21}, {a22}], [{a31}, {a32}]]) = {M13};  C13 = (+)·M13 = {C13}\n")
             det = a11*C11 + a12*C12 + a13*C13
-            pasos_text.insert("end", f"|A| = a11Â·C11 + a12Â·C12 + a13Â·C13 = ({a11})Â·({C11}) + ({a12})Â·({C12}) + ({a13})Â·({C13}) = {det}\n")
+            pasos_text.insert("end", f"|A| = a11·C11 + a12·C12 + a13·C13 = ({a11})·({C11}) + ({a12})·({C12}) + ({a13})·({C13}) = {det}\n")
         else:
-            messagebox.showerror("MÃ©todo adjunta", "Solo disponible para n â‰¤ 3.")
+            messagebox.showerror("Método adjunta", "Solo disponible para n  3.")
             return
 
         if det == 0:
@@ -493,7 +493,7 @@ class InversaMatrizApp:
 
         if n == 1:
             C = [[Fraction(1)]]
-            pasos_text.insert("end", "C[1,1] = (+)Â·det([]) = 1\n")
+            pasos_text.insert("end", "C[1,1] = (+)·det([]) = 1\n")
         elif n == 2:
             # cofactores calculados directamente desde A
             a,b = A[0]
@@ -504,10 +504,10 @@ class InversaMatrizApp:
             c12 = sign(0,1)*m12
             c21 = sign(1,0)*m21
             c22 = sign(1,1)*m22
-            pasos_text.insert("end", f"C[1,1] = (+)Â·{m11} = {c11}\n")
-            pasos_text.insert("end", f"C[1,2] = (-)Â·{m12} = {c12}\n")
-            pasos_text.insert("end", f"C[2,1] = (-)Â·{m21} = {c21}\n")
-            pasos_text.insert("end", f"C[2,2] = (+)Â·{m22} = {c22}\n")
+            pasos_text.insert("end", f"C[1,1] = (+)·{m11} = {c11}\n")
+            pasos_text.insert("end", f"C[1,2] = (-)·{m12} = {c12}\n")
+            pasos_text.insert("end", f"C[2,1] = (-)·{m21} = {c21}\n")
+            pasos_text.insert("end", f"C[2,2] = (+)·{m22} = {c22}\n")
             C = [[c11, c12], [c21, c22]]
         else:  # n == 3
             C = [[Fraction(0) for _ in range(3)] for _ in range(3)]
@@ -525,7 +525,7 @@ class InversaMatrizApp:
                     pasos_text.insert(
                         "end",
                         f"M[{i+1},{j+1}] = det([[{m[0][0]}, {m[0][1]}],[{m[1][0]}, {m[1][1]}]]) = {mdet}; "
-                        f"C[{i+1},{j+1}] = ({'+' if s>0 else '-'})Â·{mdet} = {C[i][j]}\n",
+                        f"C[{i+1},{j+1}] = ({'+' if s>0 else '-'})·{mdet} = {C[i][j]}\n",
                     )
 
         # 3) Adj(A) = (Cof(A))^t (traspuesta de la matriz de cofactores)
@@ -535,17 +535,17 @@ class InversaMatrizApp:
         adj_frame.pack()
         self._render_matrix(adj_frame, Adj_A)
 
-        # secciÃ³n final: A^{-1} = (1/|A|)Â·Adj(A)
+        # sección final: A^{-1} = (1/|A|)·Adj(A)
         bottom = tk.Frame(self.result_frame, bg=self.bg)
         bottom.pack(fill="x", pady=(10, 4))
-        tk.Label(bottom, text="A^{-1} = (1/|A|)Â·Adj(A)", font=("Segoe UI", 14, "bold"), bg=self.bg, fg="#b91c1c").pack()
+        tk.Label(bottom, text="A^{-1} = (1/|A|)·Adj(A)", font=("Segoe UI", 14, "bold"), bg=self.bg, fg="#b91c1c").pack()
 
         inv = [[Adj_A[i][j] / det for j in range(n)] for i in range(n)]
         self._render_matrix(self.result_frame, inv)
         pasos_text.insert("end", "\n3) Adj(A) = (Cof(A))^t\n")
-        pasos_text.insert("end", f"4) Como |A| = {det}, A^{-1} = (1/{det})Â·Adj(A)\n")
+        pasos_text.insert("end", f"4) Como |A| = {det}, A^{-1} = (1/{det})·Adj(A)\n")
         pasos_text.insert("end", f"\nAdj(A) = (Cof(A))^t\n")
-        pasos_text.insert("end", f"A^{-1} = (1/{det})Â·Adj(A)\n")
+        pasos_text.insert("end", f"A^{-1} = (1/{det})·Adj(A)\n")
 
     # Construye la lista de pasos (descriptores) para Gauss-Jordan
     def _gauss_jordan_steps(self, A, I, collect_only=False):
@@ -562,8 +562,8 @@ class InversaMatrizApp:
                     best_abs = abs(val)
             return best
 
-        # Usamos descriptores de pasos genÃ©ricos; los valores exactos (pivote/factor)
-        # se calculan al aplicar el paso, para que funcionen con animaciÃ³n.
+        # Usamos descriptores de pasos genéricos; los valores exactos (pivote/factor)
+        # se calculan al aplicar el paso, para que funcionen con animación.
         for k in range(n):
             pasos.append(("pivot", k))
             pasos.append(("scale", k))
@@ -572,7 +572,7 @@ class InversaMatrizApp:
                     pasos.append(("elim", i, k))
 
         if collect_only:
-            # ValidaciÃ³n mÃ­nima: intentamos simular para detectar singularidad
+            # Validación mínima: intentamos simular para detectar singularidad
             Atest = [row[:] for row in A]
             Itest = [row[:] for row in I]
             ok = self._apply_steps(Atest, Itest, pasos, log_to_text=False, simulate=True)
@@ -580,7 +580,7 @@ class InversaMatrizApp:
         return True, pasos
 
     # ---------------------------------------------------------
-    # Formato: operaciÃ³n vertical tipo libro y matriz aumentada
+    # Formato: operación vertical tipo libro y matriz aumentada
     # ---------------------------------------------------------
     def _format_operacion_vertical_lines(self, fila_pivote, fila_actual, factor, fila_result, idx_piv, idx_obj):
         # Alinear etiquetas y celdas considerando todas las filas involucradas
@@ -635,7 +635,7 @@ class InversaMatrizApp:
 
     def _insert_header_to_text(self, titulo, comentario=""):
         # Inserta encabezado en self.pasos_text con estilos
-        self.pasos_text.insert("end", "OperaciÃ³n: ")
+        self.pasos_text.insert("end", "Operación: ")
         start = self.pasos_text.index("end")
         self.pasos_text.insert("end", titulo)
         end = self.pasos_text.index("end")
@@ -644,7 +644,7 @@ class InversaMatrizApp:
         except Exception:
             pass
         if comentario:
-            self.pasos_text.insert("end", "  â€”  ")
+            self.pasos_text.insert("end", "    ")
             c_start = self.pasos_text.index("end")
             self.pasos_text.insert("end", comentario)
             c_end = self.pasos_text.index("end")
@@ -663,7 +663,7 @@ class InversaMatrizApp:
         Aw = [row[:] for row in A]
         Iw = [row[:] for row in I]
 
-        # limpiar Ã¡rea de pasos
+        # limpiar área de pasos
         self.pasos_text.delete("1.0", "end")
 
         fila_pivote = 0
@@ -683,8 +683,8 @@ class InversaMatrizApp:
                 Aw[fila_pivote], Aw[piv] = Aw[piv], Aw[fila_pivote]
                 Iw[fila_pivote], Iw[piv] = Iw[piv], Iw[fila_pivote]
                 self._insert_header_to_text(
-                    f"R{fila_pivote+1} â†” R{piv+1}",
-                    f"Intercambio de filas para poner pivote â‰  0 en columna {col+1}"
+                    f"R{fila_pivote+1}  R{piv+1}",
+                    f"Intercambio de filas para poner pivote  0 en columna {col+1}"
                 )
                 for line in self._format_augmented_lines(Aw, Iw):
                     self.pasos_text.insert("end", line + "\n")
@@ -701,8 +701,8 @@ class InversaMatrizApp:
                 Aw[fila_pivote] = [val / a for val in Aw[fila_pivote]]
                 Iw[fila_pivote] = [val / a for val in Iw[fila_pivote]]
                 self._insert_header_to_text(
-                    f"R{fila_pivote+1} â†’ R{fila_pivote+1}/{_fmt(a)}",
-                    f"NormalizaciÃ³n: pivote 1 en columna {col+1}"
+                    f"R{fila_pivote+1}  R{fila_pivote+1}/{_fmt(a)}",
+                    f"Normalización: pivote 1 en columna {col+1}"
                 )
                 for line in self._format_augmented_lines(Aw, Iw):
                     self.pasos_text.insert("end", line + "\n")
@@ -722,7 +722,7 @@ class InversaMatrizApp:
                 # resultado
                 Aw[r] = [fila_orig_A[j] - f * fila_piv_A[j] for j in range(n)]
                 Iw[r] = [fila_orig_I[j] - f * fila_piv_I[j] for j in range(n)]
-                # formateo operaciÃ³n vertical sobre fila completa (A|I)
+                # formateo operación vertical sobre fila completa (A|I)
                 fila_piv_full = fila_piv_A + fila_piv_I
                 fila_orig_full = fila_orig_A + fila_orig_I
                 fila_res_full = Aw[r] + Iw[r]
@@ -730,7 +730,7 @@ class InversaMatrizApp:
                     fila_piv_full, fila_orig_full, f, fila_res_full, fila_pivote + 1, r + 1
                 )
                 self._insert_header_to_text(
-                    f"R{r+1} â†’ R{r+1} - ({_fmt(f)})R{fila_pivote+1}",
+                    f"R{r+1}  R{r+1} - ({_fmt(f)})R{fila_pivote+1}",
                     f"Anular elemento en columna {col+1} usando la fila pivote"
                 )
                 # ensamblar lado a lado: oper_lines (izq) y matriz (der)
@@ -753,7 +753,7 @@ class InversaMatrizApp:
         # render final en las grillas superiores
         self._render_augmented(Aw, Iw)
 
-        # ComprobaciÃ³n por propiedades (c), (d) y (e)
+        # Comprobación por propiedades (c), (d) y (e)
         if len(columnas_pivote) != n:
             try:
                 self.pasos_text.insert("end", "Comprobacion de invertibilidad (c, d, e)\n", ("bold",))
@@ -846,7 +846,7 @@ class InversaMatrizApp:
             self._explain_failure_cde(A, self.pasos_text)
             messagebox.showerror("Sin inversa", "No tiene n posiciones pivote (c). Entonces Ax=0 tiene solucion no trivial (d) y las columnas de A son dependientes (e).")
             return
-        # Copias mutables para animaciÃ³n
+        # Copias mutables para animación
         self.A_anim = [row[:] for row in A]
         self.I_anim = [row[:] for row in I]
         self.steps = pasos
@@ -858,7 +858,7 @@ class InversaMatrizApp:
 
     def _animate_next(self):
         if self.step_index >= len(self.steps):
-            # AnimaciÃ³n terminada: confirmar (c), (d) y (e) si A quedÃ³ en identidad
+            # Animación terminada: confirmar (c), (d) y (e) si A quedó en identidad
             try:
                 n = self.n
                 A = self.A_anim
@@ -872,11 +872,11 @@ class InversaMatrizApp:
                         break
                 if is_I:
                     try:
-                        self.pasos_text.insert("end", "ComprobaciÃ³n de invertibilidad (c, d, e)\n", ("bold",))
+                        self.pasos_text.insert("end", "Comprobación de invertibilidad (c, d, e)\n", ("bold",))
                     except Exception:
-                        self.pasos_text.insert("end", "ComprobaciÃ³n de invertibilidad (c, d, e)\n")
-                    self.pasos_text.insert("end", f"(c) Pivotes encontrados: {n} de n = {n} â†’ OK.\n")
-                    self.pasos_text.insert("end", "(d) Ax = 0 solo tiene la soluciÃ³n trivial.\n")
+                        self.pasos_text.insert("end", "Comprobación de invertibilidad (c, d, e)\n")
+                    self.pasos_text.insert("end", f"(c) Pivotes encontrados: {n} de n = {n}  OK.\n")
+                    self.pasos_text.insert("end", "(d) Ax = 0 solo tiene la solución trivial.\n")
                     self.pasos_text.insert("end", "(e) Las columnas de A forman un conjunto linealmente independiente.\n")
             finally:
                 return

@@ -1,4 +1,4 @@
-import tkinter as tk
+﻿import tkinter as tk
 from tkinter import ttk, messagebox
 from fractions import Fraction
 
@@ -62,7 +62,7 @@ class TranspuestaMatrizApp:
             fg="#b91c1c",
         ).pack(pady=(10, 6))
 
-        # configuración dimensiones
+        # configuraciÃ³n dimensiones
         cfg = tk.Frame(container, bg=self.bg)
         cfg.pack(pady=(6, 10))
 
@@ -147,14 +147,14 @@ class TranspuestaMatrizApp:
             c = int(self.var_cols.get())
             if f <= 0 or c <= 0:
                 raise ValueError
-            # límite razonable para UI
+            # lÃ­mite razonable para UI
             if f > 12 or c > 12:
                 messagebox.showwarning(
                     "Aviso",
-                    "Dimensiones grandes pueden dificultar la visualización (máximo 12x12).",
+                    "Dimensiones grandes pueden dificultar la visualizaciÃ³n (mÃ¡ximo 12x12).",
                 )
         except Exception:
-            messagebox.showerror("Error", "Ingrese dimensiones válidas (enteros positivos).")
+            messagebox.showerror("Error", "Ingrese dimensiones vÃ¡lidas (enteros positivos).")
             return
 
         self.dim = (f, c)
@@ -208,7 +208,7 @@ class TranspuestaMatrizApp:
         f = len(A)
         c = len(A[0]) if f else 0
 
-        # T tendrá tamaño c x f
+        # T tendrÃ¡ tamaÃ±o c x f
         res_title = tk.Label(
             self.result_frame,
             text="Resultado (Transpuesta)",
@@ -240,7 +240,7 @@ class TranspuestaMatrizApp:
                 row_lbls.append(lbl)
             self.result_labels.append(row_lbls)
 
-        # sección de pasos
+        # secciÃ³n de pasos
         pasos_title = tk.Label(
             self.result_frame,
             text="Pasos detallados",
@@ -309,3 +309,5 @@ class TranspuestaMatrizApp:
                     self.volver_callback()
             except Exception:
                 pass
+
+

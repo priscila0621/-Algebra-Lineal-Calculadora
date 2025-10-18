@@ -1,6 +1,7 @@
-import tkinter as tk
+﻿import tkinter as tk
 from tkinter import ttk, messagebox
 from fractions import Fraction
+
 
 class RestaMatricesApp:
     def __init__(self, root, volver_callback):
@@ -42,7 +43,6 @@ class RestaMatricesApp:
 
         self.show_welcome()
 
-    # ---------------- Helpers ----------------
     def clear_main(self):
         for w in self.main_frame.winfo_children():
             w.destroy()
@@ -67,11 +67,10 @@ class RestaMatricesApp:
     def _parse_fraction(self, s):
         s = s.strip()
         if s == "":
-            raise ValueError("Vacío")
+            raise ValueError("VacÃ­o")
         s = s.replace(",", ".")
         return Fraction(s)
 
-    # ---------------- Pantalla bienvenida ----------------
     def show_welcome(self):
         self.clear_main()
         ttk.Label(self.main_frame, text="Resta de Matrices", font=("Segoe UI", 18, "bold"),
@@ -84,16 +83,15 @@ class RestaMatricesApp:
         start_btn.pack(pady=20)
         self.add_back_button(self.main_frame)
 
-    # ---------------- Configuración ----------------
     def ask_num_and_dimensions(self):
         self.clear_main()
-        ttk.Label(self.main_frame, text="Configuración - Cantidad y dimensiones", font=("Segoe UI", 14, "bold"),
+        ttk.Label(self.main_frame, text="ConfiguraciÃ³n - Cantidad y dimensiones", font=("Segoe UI", 14, "bold"),
                   background="#ffe4e6", foreground="#b91c1c").pack(pady=10)
 
         frame = ttk.Frame(self.main_frame, padding=8)
         frame.pack(pady=8)
 
-        ttk.Label(frame, text="¿Cuántas matrices deseas restar?", background="#ffe4e6").grid(row=0, column=0, padx=6, pady=6, sticky="w")
+        ttk.Label(frame, text="Â¿CuÃ¡ntas matrices deseas restar?", background="#ffe4e6").grid(row=0, column=0, padx=6, pady=6, sticky="w")
         self.num_var = tk.StringVar()
         tk.Entry(frame, textvariable=self.num_var, width=6, font=("Segoe UI", 12), bg="#fff0f5").grid(row=0, column=1, padx=6, pady=6)
 
@@ -120,13 +118,12 @@ class RestaMatricesApp:
             if n < 2 or r <= 0 or c <= 0:
                 raise ValueError
         except Exception:
-            messagebox.showerror("Error", "Ingresa números válidos (mínimo 2 matrices, dimensiones > 0)")
+            messagebox.showerror("Error", "Ingresa nÃºmeros vÃ¡lidos (mÃ­nimo 2 matrices, dimensiones > 0)")
             return
         self.num_matrices, self.rows, self.cols = n, r, c
         self.matrices, self.current_matrix = [], 0
         self.ask_matrix_values()
 
-    # ---------------- Ingreso de valores ----------------
     def ask_matrix_values(self):
         self.clear_main()
         ttk.Label(self.main_frame, text=f"Matriz {self.current_matrix+1} de {self.num_matrices}",
@@ -184,7 +181,6 @@ class RestaMatricesApp:
         else:
             self.show_result()
 
-    # ---------------- Resultado ----------------
     def show_result(self):
         self.clear_main()
         ttk.Label(self.main_frame, text="Resumen de matrices ingresadas",
@@ -218,22 +214,31 @@ class RestaMatricesApp:
 
         self._display_matrix(self.main_frame, result)
 
-        ttk.Label(self.main_frame, text="Detalle de la resta por posición",
+        ttk.Label(self.main_frame, text="Detalle de la resta por posiciÃ³n",
                   font=("Segoe UI", 13, "bold"),
                   background="#ffe4e6", foreground="#7f1d1d").pack(pady=8)
 
         self._display_subtraction_details(self.main_frame, result)
 
     def _display_matrix(self, parent, matrix):
+        # Igual que en Suma: corchetes altos estilo libro
         frame = ttk.Frame(parent)
         frame.pack(pady=6)
+        rows = len(matrix)
+        cols = len(matrix[0]) if rows else 0
         for i, row in enumerate(matrix):
+            if i == 0:
+                left, right = '⎡', '⎤'
+            elif i == rows - 1:
+                left, right = '⎣', '⎦'
+            else:
+                left, right = '⎢', '⎥'
+            tk.Label(frame, text=left, font=('Consolas', 16), bg='#ffe4e6').grid(row=i, column=0, padx=(2,4))
             for j, val in enumerate(row):
-                tk.Label(frame, text=str(val), width=8, font=("Segoe UI", 12),
-                         bg="#fff0f5", relief="solid").grid(row=i, column=j, padx=3, pady=3)
+                tk.Label(frame, text=str(val), width=8, font=('Segoe UI', 12), bg='#fff0f5', relief='solid').grid(row=i, column=j+1, padx=3, pady=3)
+            tk.Label(frame, text=right, font=('Consolas', 16), bg='#ffe4e6').grid(row=i, column=cols+1, padx=(4,2))
 
     def _display_subtraction_details(self, parent, result):
-        # Contenedor con scrollbar
         container = tk.Frame(parent)
         container.pack(fill="both", expand=True, pady=5)
         canvas = tk.Canvas(container, bg="#ffe4e6", height=200)

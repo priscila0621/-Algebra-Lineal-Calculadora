@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from fractions import Fraction
 
+
 class SumaMatricesApp:
     def __init__(self, root, volver_callback):
         self.root = root
@@ -226,38 +227,43 @@ class SumaMatricesApp:
         self._display_sum_details(self.main_frame, result)
 
     def _display_matrix(self, parent, matrix):
+        # Muestra una matriz delimitada con corchetes altos estilo libro
         frame = ttk.Frame(parent)
         frame.pack(pady=6)
+        rows = len(matrix)
+        cols = len(matrix[0]) if rows else 0
         for i, row in enumerate(matrix):
+            # Corchete izquierdo por fila
+            if i == 0:
+                left, right = "⎡", "⎤"
+            elif i == rows - 1:
+                left, right = "⎣", "⎦"
+            else:
+                left, right = "⎢", "⎥"
+            tk.Label(frame, text=left, font=("Consolas", 16), bg="#ffe4e6").grid(row=i, column=0, padx=(2, 4))
             for j, val in enumerate(row):
                 tk.Label(frame, text=str(val), width=8, font=("Segoe UI", 12),
-                         bg="#fff0f5", relief="solid").grid(row=i, column=j, padx=3, pady=3)
+                         bg="#fff0f5", relief="solid").grid(row=i, column=j+1, padx=3, pady=3)
+            tk.Label(frame, text=right, font=("Consolas", 16), bg="#ffe4e6").grid(row=i, column=cols+1, padx=(4, 2))
 
     def _display_sum_details(self, parent, result):
-        # Marco contenedor con scrollbar
         container = ttk.Frame(parent)
         container.pack(pady=6, fill="both", expand=True)
 
-        # Scrollbar vertical
         scrollbar = ttk.Scrollbar(container)
         scrollbar.pack(side="right", fill="y")
 
-        # Cuadro de texto con scroll
         text_widget = tk.Text(container, wrap="word", height=15, width=100,
                               font=("Segoe UI", 11), bg="#fff0f5")
         text_widget.pack(side="left", fill="both", expand=True)
 
-        # Conectar scroll con el Text
         text_widget.config(yscrollcommand=scrollbar.set)
         scrollbar.config(command=text_widget.yview)
 
-        # Insertar detalle de la suma
         for i in range(self.rows):
             for j in range(self.cols):
                 parts = " + ".join(str(m[i][j]) for m in self.matrices)
                 expr = f"[{i+1},{j+1}]: {parts} = {result[i][j]}\n"
                 text_widget.insert("end", expr)
 
-        # Hacer que el texto sea solo lectura
         text_widget.config(state="disabled")
-

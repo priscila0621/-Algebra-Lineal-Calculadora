@@ -72,7 +72,7 @@ def determinante_con_pasos(matrix: List[List[Fraction]], level: int = 0) -> Tupl
     n = len(matrix)
     indent = "    " * level
     steps: List[str] = []
-    separator = indent + "─" * 70
+    separator = indent + ("—" * 70)
 
     if n == 1:
         value = matrix[0][0]
@@ -88,8 +88,7 @@ def determinante_con_pasos(matrix: List[List[Fraction]], level: int = 0) -> Tupl
         steps.append(f"{indent}Caso base 2×2:")
         steps.extend(_matrix_lines(matrix, indent + "    "))
         steps.append(
-            f"{indent}det(A) = ({_fmt(a11)} × {_fmt(a22)}) − ({_fmt(a12)} × {_fmt(a21)}) "
-            f"= {_fmt(prod1)} − {_fmt(prod2)} = {_fmt(det)}"
+            f"{indent}det(A) = ({_fmt(a11)} · {_fmt(a22)}) − ({_fmt(a12)} · {_fmt(a21)}) = {_fmt(prod1)} − {_fmt(prod2)} = {_fmt(det)}"
         )
         return det, steps
 
@@ -101,7 +100,7 @@ def determinante_con_pasos(matrix: List[List[Fraction]], level: int = 0) -> Tupl
         det = Fraction(1)
         for value in diag:
             det *= value
-        diag_product = " × ".join(_fmt(value) for value in diag)
+        diag_product = " · ".join(_fmt(value) for value in diag)
         steps.append(f"{indent}La matriz es triangular {tipo}.")
         steps.append(f"{indent}Producto de la diagonal principal: {diag_product} = {_fmt(det)}")
         return det, steps
@@ -128,7 +127,7 @@ def determinante_con_pasos(matrix: List[List[Fraction]], level: int = 0) -> Tupl
 
         cofactor_label = _label("C", 1, j + 1)
         minor_label = _label("M", 1, j + 1)
-        steps.append(f"{indent}Cofactor: {cofactor_label} = (−1)^(1+{j+1}) × det({minor_label})")
+        steps.append(f"{indent}Cofactor: {cofactor_label} = (−1)^(1+{j+1}) · det({minor_label})")
 
         submatriz = _minor(matrix, 0, j)
         steps.append(f"{indent}Submatriz {minor_label} (eliminando fila 1 y columna {j+1}):")
@@ -140,12 +139,12 @@ def determinante_con_pasos(matrix: List[List[Fraction]], level: int = 0) -> Tupl
 
         cofactor_value = sign_factor * sub_det
         steps.append(
-            f"{indent}{cofactor_label} = {_sign_factor_text(sign_factor)} × {_fmt_factor(sub_det)} = {_fmt(cofactor_value)}"
+            f"{indent}{cofactor_label} = {_sign_factor_text(sign_factor)} · {_fmt_factor(sub_det)} = {_fmt(cofactor_value)}"
         )
 
         contribucion = elemento * cofactor_value
         steps.append(
-            f"{indent}Contribución parcial: {_fmt_factor(elemento)} × {_fmt_factor(cofactor_value)} = {_fmt(contribucion)}"
+            f"{indent}Contribución parcial: {_fmt_factor(elemento)} · {_fmt_factor(cofactor_value)} = {_fmt(contribucion)}"
         )
         contributions.append(contribucion)
         summary_values.append(contribucion)
@@ -218,27 +217,23 @@ class DeterminanteMatrizApp:
         ttk.Button(botones, text="Calcular determinante", style="Primary.TButton",
                    command=self._calcular).grid(row=0, column=0, padx=6, pady=4)
         ttk.Button(botones, text="Limpiar entradas", command=self._limpiar).grid(row=0, column=1, padx=6, pady=4)
-        ttk.Button(botones, text="Volver al inicio", style="Back.TButton",
-                   command=self._volver_al_inicio).grid(row=0, column=2, padx=6, pady=4)
 
-        self.error_label = ttk.Label(acciones, text="", foreground="#b91c1c")
-        self.error_label.grid(row=1, column=0, sticky="w", padx=6, pady=(4, 0))
-
-        resultado_frame = ttk.LabelFrame(container, text="Procedimiento paso a paso", padding=12)
+        resultado_frame = ttk.Frame(container)
         resultado_frame.grid(row=4, column=0, sticky="nsew")
-        resultado_frame.columnconfigure(0, weight=1)
+        container.rowconfigure(4, weight=1)
+        resultado_frame.columnconfigure(1, weight=1)
         resultado_frame.rowconfigure(1, weight=1)
 
         self.resumen_label = ttk.Label(resultado_frame, text="Determinante pendiente de cálculo",
-                                       font=("Segoe UI", 14, "bold"), foreground="#7f1d1d")
-        self.resumen_label.grid(row=0, column=0, sticky="w", pady=(0, 10))
+                                       font=("Segoe UI", 14, "bold"))
+        self.resumen_label.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
 
-        self.matriz_preview = ttk.Frame(resultado_frame)
-        self.matriz_preview.grid(row=1, column=0, sticky="nsew", pady=(0, 12))
+        self.matriz_preview = ttk.Frame(resultado_frame, padding=8)
+        self.matriz_preview.grid(row=1, column=0, sticky="nw")
         self.matriz_preview.columnconfigure(0, weight=1)
 
         pasos_container = ttk.Frame(resultado_frame)
-        pasos_container.grid(row=2, column=0, sticky="nsew")
+        pasos_container.grid(row=1, column=1, sticky="nsew")
         pasos_container.columnconfigure(0, weight=1)
         pasos_container.rowconfigure(0, weight=1)
 
@@ -291,7 +286,6 @@ class DeterminanteMatrizApp:
         return matriz
 
     def _calcular(self):
-        self.error_label.config(text="")
         self.pasos_text.config(state="normal")
         self.pasos_text.delete("1.0", "end")
         self.pasos_text.config(state="disabled")
@@ -302,12 +296,12 @@ class DeterminanteMatrizApp:
         try:
             matriz = self._leer_matriz()
         except Exception as exc:
-            self.error_label.config(text=f"Error: {exc}")
+            messagebox.showerror("Error", str(exc))
             return
 
         filas = len(matriz)
         if filas == 0:
-            self.error_label.config(text="Genera la matriz primero.")
+            messagebox.showerror("Error", "Genera la matriz primero.")
             return
         columnas = len(matriz[0])
         if filas != columnas:
@@ -346,7 +340,6 @@ class DeterminanteMatrizApp:
         for fila_entries in self.entries:
             for entry in fila_entries:
                 entry.delete(0, "end")
-        self.error_label.config(text="")
         self.resumen_label.config(text="Determinante pendiente de cálculo")
         self.pasos_text.config(state="normal")
         self.pasos_text.delete("1.0", "end")
@@ -363,3 +356,4 @@ class DeterminanteMatrizApp:
                     self.volver_callback()
             except Exception:
                 pass
+

@@ -1,16 +1,17 @@
-from PySide6.QtWidgets import (
+﻿from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFrame
 )
 from PySide6.QtCore import Qt
 from .menu_matrices_qt import MenuMatricesWindow
 from .sistemas.gauss_jordan_qt import GaussJordanWindow
+from .independencia_qt import IndependenciaWindow
 from .theme import make_theme_toggle_button, install_toggle_shortcut
 
 
 class MenuPrincipalWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Calculadora Álgebra Lineal")
+        self.setWindowTitle("Calculadora \u00C1lgebra Lineal")
 
         outer = QWidget()
         self.setCentralWidget(outer)
@@ -33,12 +34,12 @@ class MenuPrincipalWindow(QMainWindow):
         lay.setContentsMargins(28, 28, 28, 28)
         lay.setSpacing(16)
 
-        title = QLabel("Calculadora Álgebra Lineal")
+        title = QLabel("Calculadora \u00C1lgebra Lineal")
         title.setObjectName("Title")
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         lay.addWidget(title)
 
-        subtitle = QLabel("Herramientas de álgebra lineal: sistemas, matrices y más.")
+        subtitle = QLabel("Herramientas de \u00E1lgebra lineal: sistemas, matrices y m\u00E1s.")
         subtitle.setObjectName("Subtitle")
         lay.addWidget(subtitle)
 
@@ -78,5 +79,9 @@ class MenuPrincipalWindow(QMainWindow):
         self.m.showMaximized()
 
     def _open_independencia(self):
-        self.w = GaussJordanWindow(parent=self, start_with_independencia=True)
+        self.w = IndependenciaWindow(parent=self)
         self.w.showMaximized()
+
+
+
+
