@@ -58,7 +58,7 @@ class GaussJordanApp:
     # ---------------------------------------------------------
     # Creación de los elementos gráficos principales
     # ---------------------------------------------------------
-    def _setup_widgets(self):            
+    def _setup_widgets(self):
         frame_top = ttk.Frame(self.root, padding=20, style="TFrame")
         frame_top.pack(fill="x", pady=10)
 
@@ -78,16 +78,16 @@ class GaussJordanApp:
         ttk.Button(frame_top, text="Crear matriz", style="Primary.TButton", command=self.crear_matriz).grid(
             row=0, column=4, padx=10)
 
-        # 🔹 Botón para limpiar pantalla
+        # Botón para limpiar pantalla
         ttk.Button(frame_top, text="Limpiar pantalla", style="Primary.TButton", command=self.limpiar_pantalla).grid(
             row=0, column=5, padx=10)
 
-        # 🔹 Botón volver al inicio al lado del de limpiar
+        # Botón volver al inicio al lado del de limpiar
         self.boton_volver = ttk.Button(frame_top, text="Volver al inicio",
                                        style="Primary.TButton", command=self.volver_callback)
         self.boton_volver.grid(row=0, column=6, padx=10)
 
-        # 🔹 Botón para verificar independencia de columnas
+        # Botón para verificar independencia de columnas
         ttk.Button(frame_top, text="Verificar independencia",
                    style="Primary.TButton", command=self.verificar_independencia_columnas).grid(
             row=0, column=7, padx=10)
@@ -156,7 +156,7 @@ class GaussJordanApp:
             self.mostrando_detalles = False
 
     # ---------------------------------------------------------
-    # 🔹 Nuevo: limpiar pantalla
+    # Nuevo: limpiar pantalla
     # ---------------------------------------------------------
     def limpiar_pantalla(self):
         # Limpia la matriz
@@ -204,7 +204,7 @@ class GaussJordanApp:
                 self.detalle_button.destroy()
             self.mostrando_detalles = False
 
-            # 🔹 Botón de pasos detallados
+            # Botón de pasos detallados
             self.detalle_button = ttk.Button(self.frame_matriz, text="Ver pasos detallados",
                                             style="Primary.TButton", command=self.toggle_detalles)
             self.detalle_button.grid(row=self.filas + 2, columnspan=self.columnas, pady=10)
@@ -240,13 +240,13 @@ class GaussJordanApp:
             for i in range(n):
                 if pivotes[i] != -1:
                     partes = []
-                    if A[i][-1] != 0:   # 🔹 Solo agregar el término independiente si no es 0
+                    if A[i][-1] != 0:   # Solo agregar el término independiente si no es 0
                         partes.append(str(A[i][-1]))
                     for j in libres:
                         coef = -A[i][j]
                         if coef != 0:
                             partes.append(f"({coef})*x{j+1}")
-                    # 🔹 Unir las partes con " + ", sin que empiece con 0 +
+                    # Unir las partes con " + ", sin que empiece con 0 +
                     expr = " + ".join(partes) if partes else "0"
                     expresiones[pivotes[i]] = expr
 
@@ -271,7 +271,7 @@ class GaussJordanApp:
         self.text_result.configure(state="normal")
         self.text_result.delete("1.0", tk.END)
 
-        self.text_result.insert(tk.END, "===== SOLUCIÓN FINAL =====\n\n", ("bold",))
+        self.text_result.insert(tk.END, "===== SOLUCI\u00D3N FINAL =====\n\n", ("bold",))
         if self.matriz_final is None:
             self.text_result.insert(tk.END, "(no hay soluciones calculadas)\n")
             self.text_result.configure(state="disabled")
@@ -347,20 +347,18 @@ class GaussJordanApp:
                 for i, val in enumerate(vector):
                     valstr = str(val).rjust(maxlen)
                     if i == 0:
-                        lines.append(f"⎡ {valstr} ⎤")
+                        lines.append(f"\u23A1 {valstr} \u23A4")  # ⎡ ⎤
                     elif i == len(vector) - 1:
-                        lines.append(f"⎣ {valstr} ⎦")
+                        lines.append(f"\u23A3 {valstr} \u23A6")  # ⎣ ⎦
                     else:
-                        lines.append(f"⎢ {valstr} ⎥")
+                        lines.append(f"\u23A2 {valstr} \u23A5")  # ⎢ ⎥
                 return lines
 
             # Imprimir en formato columna tipo libro de texto, con corchetes alineados y x = centrado
             def imprimir_vectores_con_x_igual(lines):
-                # Calcula el ancho total de la primera línea de vectores
-                total_ancho = len(lines[0])
                 x_eq = "x ="
-                # Calcula el espacio para centrar x = respecto al primer vector
-                primer_vector_inicio = lines[0].find("⎡")
+                # Buscar la posición del primer corchete de bloque
+                primer_vector_inicio = lines[0].find("\u23A1")
                 if primer_vector_inicio < 0:
                     primer_vector_inicio = 0
                 x_eq_pos = primer_vector_inicio - len(x_eq) - 1
@@ -380,7 +378,7 @@ class GaussJordanApp:
                 imprimir_vectores_con_x_igual(lines)
                 self.text_result.insert(
                     tk.END,
-                    "\nDonde " + ", ".join([f"x{l+1}" for l in libres]) + " ∈ ℝ (parámetros libres).\n"
+                    "\nDonde " + ", ".join([f"x{l+1}" for l in libres]) + " \u2208 \u211D (parámetros libres).\n"
                 )
             else:
                 # Solo combinación lineal si es homogéneo
@@ -390,7 +388,7 @@ class GaussJordanApp:
                 imprimir_vectores_con_x_igual(lines)
                 self.text_result.insert(
                     tk.END,
-                    "\nDonde " + ", ".join([f"x{l+1}" for l in libres]) + " ∈ ℝ (parámetros libres).\n"
+                    "\nDonde " + ", ".join([f"x{l+1}" for l in libres]) + " \u2208 \u211D (parámetros libres).\n"
                 )
 
         self.text_result.configure(state="disabled")
@@ -432,7 +430,7 @@ class GaussJordanApp:
                 self.text_result.insert(tk.END, line_text)
             self.text_result.insert(tk.END, "\n" + "-" * 110 + "\n\n")
 
-        self.text_result.insert(tk.END, "===== SOLUCIÓN FINAL =====\n", ("bold",))
+        self.text_result.insert(tk.END, "===== SOLUCI\u00D3N FINAL =====\n", ("bold",))
         soluciones, tipo = self._extraer_soluciones(self.matriz_final)
         for i, val in enumerate(soluciones):
             self.text_result.insert(tk.END, f"x{i+1} = {val}\n")
@@ -448,7 +446,7 @@ class GaussJordanApp:
         end = self.text_result.index(tk.END)
         self.text_result.tag_add("bold", start, end)
         if comentario:
-            self.text_result.insert(tk.END, "  —  ")
+            self.text_result.insert(tk.END, "  \u2014  ")
             c_start = self.text_result.index(tk.END)
             self.text_result.insert(tk.END, comentario)
             c_end = self.text_result.index(tk.END)
@@ -473,7 +471,7 @@ class GaussJordanApp:
             if pivote != fila_pivote:
                 A[fila_pivote], A[pivote] = A[pivote], A[fila_pivote]
                 pasos.append({
-                    "titulo": f"F{fila_pivote+1} ↔ F{pivote+1}",
+                    "titulo": f"F{fila_pivote+1} \u2194 F{pivote+1}",
                     "comentario": f"Intercambio de filas para poner un pivote no nulo en la columna {col+1}",
                     "oper_lines": [],
                     "matriz_lines": self.format_matriz_lines(A)
@@ -486,7 +484,7 @@ class GaussJordanApp:
             if divisor != 1:
                 A[fila_pivote] = [val / divisor for val in A[fila_pivote]]
                 pasos.append({
-                    "titulo": f"F{fila_pivote+1} → F{fila_pivote+1}/{divisor}",
+                    "titulo": f"F{fila_pivote+1} \u2192 F{fila_pivote+1}/{divisor}",
                     "comentario": f"Normalización: se convierte en pivote a 1 en la columna {col+1}",
                     "oper_lines": [],
                     "matriz_lines": self.format_matriz_lines(A)
@@ -501,7 +499,7 @@ class GaussJordanApp:
                         A[fila_pivote], original_fila, factor, A[f], fila_pivote + 1, f + 1
                     )
                     pasos.append({
-                        "titulo": f"F{f+1} → F{f+1} - ({factor})F{fila_pivote+1}",
+                        "titulo": f"F{f+1} \u2192 F{f+1} - ({factor})F{fila_pivote+1}",
                         "comentario": f"Se anula el elemento en la columna {col+1} usando la fila pivote",
                         "oper_lines": oper_lines,
                         "matriz_lines": self.format_matriz_lines(A)
@@ -564,14 +562,14 @@ class GaussJordanApp:
                 valstr = str(v[fila]).rjust(max_num_len)
                 # Corchetes según la fila
                 if fila == 0:
-                    corchete_izq = "⎡"
-                    corchete_der = "⎤"
+                    corchete_izq = "\u23A1"  # ⎡
+                    corchete_der = "\u23A4"  # ⎤
                 elif fila == n - 1:
-                    corchete_izq = "⎣"
-                    corchete_der = "⎦"
+                    corchete_izq = "\u23A3"  # ⎣
+                    corchete_der = "\u23A6"  # ⎦
                 else:
-                    corchete_izq = "⎢"
-                    corchete_der = "⎥"
+                    corchete_izq = "\u23A2"  # ⎢
+                    corchete_der = "\u23A5"  # ⎥
                 # Encabezado solo en la primera fila
                 if fila == 0:
                     encabezado = encabezados[idx].rjust(max_encabezado)
@@ -600,9 +598,10 @@ class GaussJordanApp:
                 fila.append(float(val_str))
             matriz.append(fila)
         # Transponer para obtener columnas como vectores
-        columnas = [ [matriz[i][j] for i in range(self.filas)] for j in range(self.columnas - 1) ]
+        columnas = [[matriz[i][j] for i in range(self.filas)] for j in range(self.columnas - 1)]
         independiente, justificacion = son_linealmente_independientes(columnas)
         messagebox.showinfo(
             "Independencia de columnas",
             ("INDEPENDIENTES\n\n" if independiente else "DEPENDIENTES\n\n") + justificacion
         )
+
