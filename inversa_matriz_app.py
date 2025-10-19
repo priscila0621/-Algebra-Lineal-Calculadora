@@ -464,7 +464,7 @@ class InversaMatrizApp:
             a11,a12,a13 = A[0]
             a21,a22,a23 = A[1]
             a31,a32,a33 = A[2]
-            pasos_text.insert("end", "Expansión por cofactores en la primera fila:\n")
+            pasos_text.insert("end", "Expansion por cofactores en la primera fila:\n")
             # Menores 2x2 y cofactores
             M11 = a22*a33 - a23*a32
             M12 = a21*a33 - a23*a31

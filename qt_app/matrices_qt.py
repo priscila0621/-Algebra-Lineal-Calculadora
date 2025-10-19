@@ -1,6 +1,7 @@
 ﻿from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QGridLayout, QLineEdit, QTextEdit, QMessageBox, QFrame
+    QScrollArea, QGridLayout, QLineEdit, QTextEdit, QMessageBox, QFrame,
+    QRadioButton, QCheckBox
 )
 from PySide6.QtCore import Qt
 from fractions import Fraction
@@ -65,6 +66,16 @@ class _BaseMatrixWindow(QMainWindow):
         self.btn_run.clicked.connect(self._run)
         self.lay.addWidget(self.btn_run)
 
+        # Área visual para mostrar la matriz resultante en cuadritos
+        self.result_matrix_area = QScrollArea(); self.result_matrix_area.setWidgetResizable(True)
+        self.result_matrix_area.setMinimumHeight(200)
+        self.result_matrix_container = QWidget()
+        self.result_matrix_layout = QVBoxLayout(self.result_matrix_container)
+        self.result_matrix_layout.setContentsMargins(6, 6, 6, 6)
+        self.result_matrix_area.setWidget(self.result_matrix_container)
+        self.lay.addWidget(self.result_matrix_area)
+
+        # Caja de texto con pasos/explicaciones (ya existente)
         self.result_box = QTextEdit(); self.result_box.setReadOnly(True)
         self.result_box.setStyleSheet("font-family:Consolas,monospace;font-size:12px;")
         self.lay.addWidget(self.result_box, 1)
@@ -75,7 +86,7 @@ class _BaseMatrixWindow(QMainWindow):
         try:
             self._setup_entries()
         except Exception as exc:
-            QMessageBox.warning(self, "Aviso", f"Datos invÃ¡lidos: {exc}")
+            QMessageBox.warning(self, "Aviso", f"Datos invalidos: {exc}")
 
     def _setup_entries(self):
         # override in subclasses for multiple matrices
@@ -108,6 +119,34 @@ class _BaseMatrixWindow(QMainWindow):
             A.append(row)
         return A
 
+    def _show_matrix_result(self, M, title: str = "Matriz resultante"):
+        """Muestra la matriz M en el contenedor visual como cuadritos con un título.
+        Limpia el contenedor anterior y añade un widget generado por _matrix_widget.
+        """
+        # limpiar contenedor previo
+        try:
+            for i in reversed(range(self.result_matrix_layout.count())):
+                w = self.result_matrix_layout.itemAt(i).widget()
+                if w:
+                    w.setParent(None)
+        except Exception:
+            pass
+        # añadir título y matriz
+        lbl = QLabel(title)
+        lbl.setStyleSheet("font-weight:bold;font-size:14px;padding:6px;")
+        self.result_matrix_layout.addWidget(lbl, 0)
+        matw = _matrix_widget(self, M)
+        self.result_matrix_layout.addWidget(matw, 1)
+        # for accessibility, also set textual representation in result_box if empty
+        try:
+            if not self.result_box.toPlainText().strip():
+                lines = []
+                for r in M:
+                    lines.append(" ".join(str(v) for v in r))
+                self.result_box.setPlainText(title + "\n\n" + "\n".join(lines))
+        except Exception:
+            pass
+
     def _run(self):
         raise NotImplementedError
 
@@ -116,7 +155,7 @@ class SumaMatricesWindow(_BaseMatrixWindow):
     def __init__(self, parent=None):
         super().__init__("Suma de Matrices", parent)
         self.num_edit = QLineEdit("2"); self.num_edit.setFixedWidth(60); self.num_edit.setAlignment(Qt.AlignCenter)
-        self.lay.itemAt(1).layout().insertWidget(0, QLabel("NÂº matrices:"))
+        self.lay.itemAt(1).layout().insertWidget(0, QLabel("Nº matrices:"))
         self.lay.itemAt(1).layout().insertWidget(1, self.num_edit)
 
     def _setup_entries(self):
@@ -173,10 +212,15 @@ class SumaMatricesWindow(_BaseMatrixWindow):
                 lines.append(f"{l} {body} {rbr}")
             return lines
         self.result_box.clear()
+        # mostrar matriz resultante visualmente
+        try:
+            self._show_matrix_result(result, title="Matriz resultante")
+        except Exception:
+            pass
         self.result_box.insertPlainText("Matriz resultante\n\n")
         for ln in format_matrix_lines(result):
             self.result_box.insertPlainText(ln + "\n")
-        self.result_box.insertPlainText("\nDetalle de la suma por posiciÃ³n\n")
+        self.result_box.insertPlainText("\nDetalle de la suma por posicion\n")
         for i in range(filas):
             for j in range(cols):
                 parts = " + ".join(str(m[i][j]) for m in mats)
@@ -209,10 +253,15 @@ class RestaMatricesWindow(SumaMatricesWindow):
                 out.append(f"{l} {' '.join(str(x).rjust(w) for x in r)} {rbr}")
             return out
         self.result_box.clear()
+        try:
+            self._show_matrix_result(result, title="Matriz resultante")
+        except Exception:
+            pass
+        self.result_box.clear()
         self.result_box.insertPlainText("Matriz resultante\n\n")
         for ln in _fmt_mat(result):
             self.result_box.insertPlainText(ln + "\n")
-        self.result_box.insertPlainText("\nDetalle de la resta por posición\n")
+        self.result_box.insertPlainText("\nDetalle de la resta por posicion\n")
         for i in range(filas):
             for j in range(cols):
                 parts = " - ".join(str(mats[k][i][j]) for k in range(len(mats)))
@@ -221,7 +270,7 @@ class RestaMatricesWindow(SumaMatricesWindow):
 
 class MultiplicacionMatricesWindow(_BaseMatrixWindow):
     def __init__(self, parent=None):
-        super().__init__("Multiplicación de Matrices", parent)
+        super().__init__("Multiplicacion de Matrices", parent)
         # Para multiplicaciÃ³n pedimos A (f x c) y B (c x p)
         self.p_edit = QLineEdit("2"); self.p_edit.setFixedWidth(60); self.p_edit.setAlignment(Qt.AlignCenter)
         row = self.lay.itemAt(1).layout()
@@ -287,6 +336,11 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
                 out.append(f"{l} {' '.join(str(x).rjust(w) for x in r)} {rbr}")
             return out
         self.result_box.clear()
+        try:
+            self._show_matrix_result(R, title="Matriz resultante")
+        except Exception:
+            pass
+        self.result_box.clear()
         self.result_box.insertPlainText("Matriz resultante\n\n")
         for ln in _fmt_mat(R):
             self.result_box.insertPlainText(ln + "\n")
@@ -331,6 +385,11 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
         for i in range(f):
             for j in range(c):
                 pasos.append(f"Paso {len(pasos)+1}: A[{i+1},{j+1}] -> T[{j+1},{i+1}] = {A[i][j]}")
+        self.result_box.clear()
+        try:
+            self._show_matrix_result(T, title="Resultado (Transpuesta)")
+        except Exception:
+            pass
         self.result_box.clear()
         self.result_box.insertPlainText("Resultado (Transpuesta)\n\n")
         self.result_box.insertPlainText("\n".join(" ".join(str(v) for v in row) for row in T) + "\n\n")
@@ -382,7 +441,7 @@ def determinante_con_pasos(matrix, level: int = 0):
 
     if n == 1:
         value = matrix[0][0]
-        steps.append(f"{indent}Caso base 1Ã—1: det(A) = {fmt(value)}")
+        steps.append(f"{indent}Caso base 1x1: det(A) = {fmt(value)}")
         return value, steps
     if n == 2:
         a11, a12 = matrix[0]
@@ -390,7 +449,7 @@ def determinante_con_pasos(matrix, level: int = 0):
         prod1 = a11 * a22
         prod2 = a12 * a21
         det = prod1 - prod2
-        steps.append(f"{indent}Caso base 2Ã—2:")
+        steps.append(f"{indent}Caso base 2x2:")
         steps.extend(matrix_lines(matrix, indent + "    "))
         steps.append(f"{indent}det(A) = ({fmt(a11)} Â· {fmt(a22)}) âˆ’ ({fmt(a12)} Â· {fmt(a21)}) = {fmt(prod1)} âˆ’ {fmt(prod2)} = {fmt(det)}")
         return det, steps
@@ -405,7 +464,7 @@ def determinante_con_pasos(matrix, level: int = 0):
         steps.append(f"{indent}Producto de la diagonal principal: {diag_product} = {fmt(det)}")
         return det, steps
 
-    steps.append(f"{indent}ExpansiÃ³n por cofactores a lo largo de la primera fila")
+    steps.append(f"{indent}Expansion por cofactores a lo largo de la primera fila")
     formula = " + ".join(f"aâ‚{j+1}Câ‚{j+1}" for j in range(n))
     steps.append(f"{indent}det(A) = {formula}")
 
@@ -441,6 +500,26 @@ def determinante_con_pasos(matrix, level: int = 0):
 class InversaMatrizWindow(_BaseMatrixWindow):
     def __init__(self, parent=None):
         super().__init__("Inversa de Matriz", parent)
+        # Añadir selección de método y opción de animar
+        method_row = QHBoxLayout()
+        method_row.addWidget(QLabel("Método:"))
+        self.rb_adj = QRadioButton("Adjunta (1×1,2×2,3×3)")
+        self.rb_gj = QRadioButton("Gauss-Jordan")
+        self.rb_adj.setChecked(True)
+        method_row.addWidget(self.rb_adj)
+        method_row.addWidget(self.rb_gj)
+        method_row.addStretch(1)
+        self.cb_anim = QCheckBox("Animar paso a paso")
+        method_row.addWidget(self.cb_anim)
+        # Insertar el row antes del resultado (result_box está al final); lo insertamos
+        # en la posición anterior al último widget para que aparezca sobre el resultado.
+        self.lay.insertLayout(self.lay.count() - 1, method_row)
+
+        # Visual container (para mostrar matrices cofactores/adjunta/inversa de forma visual)
+        self.visual_frame = QFrame()
+        self.visual_frame.setLayout(QHBoxLayout())
+        self.visual_frame.layout().setSpacing(18)
+        self.lay.insertWidget(self.lay.count() - 1, self.visual_frame)
 
     def _setup_entries(self):
         # Fuerza matriz cuadrada: usa filas para columnas
@@ -500,74 +579,378 @@ class InversaMatrizWindow(_BaseMatrixWindow):
             ]
             return lines
 
-        self.result_box.clear()
-        fila_pivote = 0
-        pivot_cols = []
-        for col in range(n):
-            piv = None
-            for r in range(fila_pivote, n):
-                if Aw[r][col] != 0:
-                    piv = r; break
-            if piv is None:
-                continue
-            if piv != fila_pivote:
-                Aw[fila_pivote], Aw[piv] = Aw[piv], Aw[fila_pivote]
-                Iw[fila_pivote], Iw[piv] = Iw[piv], Iw[fila_pivote]
-                self.result_box.insertPlainText("OperaciÃ³n: ")
-                self.result_box.insertPlainText(f"R{fila_pivote+1} \u2194 R{piv+1}\n\n")
-                for ln in augmented_lines(Aw, Iw):
-                    self.result_box.insertPlainText(ln + "\n")
-                self.result_box.insertPlainText("\n" + ("-" * 110) + "\n\n")
+        # helper: limpiar visuales y resultado
+        def _clear_visuals():
+            lay = self.visual_frame.layout()
+            for i in reversed(range(lay.count())):
+                w = lay.itemAt(i).widget()
+                if w:
+                    w.setParent(None)
 
-            a = Aw[fila_pivote][col]
-            if a == 0:
+        _clear_visuals()
+        self.result_box.clear()
+
+        # RREF helper (copiado y adaptado de la versión Tk)
+        def rref_info(A_matrix):
+            M = [row[:] for row in A_matrix]
+            rows = len(M); cols = len(M[0]) if rows else 0
+            row = 0
+            piv_cols = []
+            for col in range(cols):
+                if row >= rows:
+                    break
+                piv = None
+                for r in range(row, rows):
+                    if M[r][col] != 0:
+                        piv = r; break
+                if piv is None:
+                    continue
+                if piv != row:
+                    M[row], M[piv] = M[piv], M[row]
+                a = M[row][col]
+                if a != 1:
+                    M[row] = [v / a for v in M[row]]
+                for r in range(rows):
+                    if r == row: continue
+                    f = M[r][col]
+                    if f != 0:
+                        M[r] = [M[r][j] - f * M[row][j] for j in range(cols)]
+                piv_cols.append(col)
+                row += 1
+            free_cols = [j for j in range(cols) if j not in piv_cols]
+            return M, piv_cols, free_cols
+
+        def explain_cde(A_matrix):
+            R, piv_cols, free_cols = rref_info(A_matrix)
+            lines = []
+            lines.append("Comprobación de invertibilidad (c, d, e):")
+            lines.append("")
+            lines.append("RREF de A:")
+            if R:
+                maxw = max(len(str(v)) for fila in R for v in fila)
+                for fila in R:
+                    lines.append(" ".join(str(v).rjust(maxw) for v in fila))
+            lines.append("")
+            nA = len(A_matrix)
+            if len(piv_cols) != nA:
+                lines.append(f"- (c) No tiene n posiciones pivote: {len(piv_cols)} de {nA}.")
+            else:
+                lines.append(f"- (c) Tiene n posiciones pivote: {len(piv_cols)} de {nA}.")
+            if free_cols:
+                j0 = free_cols[0]
+                x = [Fraction(0) for _ in range(nA)]
+                x[j0] = Fraction(1)
+                for r, pc in enumerate(piv_cols):
+                    if j0 < len(R[0]):
+                        x[pc] = -R[r][j0]
+                lines.append("")
+                lines.append("- (d) Existe solución no trivial para Ax = 0. Ejemplo:")
+                lines.append("x = [ " + ", ".join(str(v) for v in x) + " ]^t")
+                lines.append("")
+                lines.append("- (e) Por consiguiente, las columnas de A son linealmente dependientes (no LI).")
+            else:
+                lines.append("")
+                lines.append("- (d) Ax=0 solo tiene la solución trivial.")
+                lines.append("- (e) Las columnas de A son linealmente independientes.")
+            return lines
+
+        def explain_cde_text(A_matrix):
+            """Return a single string with the explanation lines joined for message boxes."""
+            return "\n".join(explain_cde(A_matrix))
+
+        # Ejecutar Gauss-Jordan solo si no se eligió explícitamente el método Adjunta
+        pivot_cols = []
+        if not (self.rb_adj.isChecked() and n <= 3):
+            # Mostrar la matriz aumentada inicial [A | I]
+            _clear_visuals()
+            box_start = QFrame(); box_start.setLayout(QVBoxLayout())
+            box_start.layout().addWidget(QLabel("Matriz aumentada [A | I]:"))
+            h = QHBoxLayout()
+            h.addWidget(_matrix_widget(self, Aw))
+            h.addWidget(_matrix_widget(self, Iw))
+            box_start.layout().addLayout(h)
+            self.visual_frame.layout().addWidget(box_start)
+
+            fila_pivote = 0
+            for col in range(n):
+                piv = None
+                for r in range(fila_pivote, n):
+                    if Aw[r][col] != 0:
+                        piv = r; break
+                if piv is None:
+                    continue
+                if piv != fila_pivote:
+                    Aw[fila_pivote], Aw[piv] = Aw[piv], Aw[fila_pivote]
+                    Iw[fila_pivote], Iw[piv] = Iw[piv], Iw[fila_pivote]
+                    self.result_box.insertPlainText("Operación: ")
+                    self.result_box.insertPlainText(f"R{fila_pivote+1} \u2194 R{piv+1}\n\n")
+                    for ln in augmented_lines(Aw, Iw):
+                        self.result_box.insertPlainText(ln + "\n")
+                    self.result_box.insertPlainText("\n" + ("-" * 110) + "\n\n")
+
+                a = Aw[fila_pivote][col]
+                if a == 0:
+                    fila_pivote += 1
+                    if fila_pivote >= n:
+                        break
+                    continue
+                if a != 1:
+                    Aw[fila_pivote] = [v / a for v in Aw[fila_pivote]]
+                    Iw[fila_pivote] = [v / a for v in Iw[fila_pivote]]
+                    self.result_box.insertPlainText("Operación: ")
+                    self.result_box.insertPlainText(f"R{fila_pivote+1} \u2192 R{fila_pivote+1}/{a}\n\n")
+                    for ln in augmented_lines(Aw, Iw):
+                        self.result_box.insertPlainText(ln + "\n")
+                    self.result_box.insertPlainText("\n" + ("-" * 110) + "\n\n")
+
+                for r in range(n):
+                    if r == fila_pivote: continue
+                    f = Aw[r][col]
+                    if f == 0: continue
+                    origA = Aw[r][:]; origI = Iw[r][:]
+                    pivA = Aw[fila_pivote][:]; pivI = Iw[fila_pivote][:]
+                    Aw[r] = [origA[j] - f * pivA[j] for j in range(n)]
+                    Iw[r] = [origI[j] - f * pivI[j] for j in range(n)]
+                    fp = pivA + pivI
+                    fa = origA + origI
+                    fr = Aw[r] + Iw[r]
+                    left_lines = operacion_vertical_aug(fp, fa, f, fr)
+                    right_lines = augmented_lines(Aw, Iw)
+                    self.result_box.insertPlainText("Operación: ")
+                    self.result_box.insertPlainText(f"R{r+1} \u2192 R{r+1} - ({f})R{fila_pivote+1}\n\n")
+                    max_left = max(len(s) for s in left_lines) if left_lines else 0
+                    sep = "   |   "
+                    max_len = max(len(left_lines), len(right_lines))
+                    for i in range(max_len):
+                        l = left_lines[i] if i < len(left_lines) else ""
+                        rr = right_lines[i] if i < len(right_lines) else ""
+                        self.result_box.insertPlainText(l.ljust(max_left) + (sep if rr else "") + rr + "\n")
+                    self.result_box.insertPlainText("\n" + ("-" * 110) + "\n\n")
+
+                pivot_cols.append(col)
                 fila_pivote += 1
                 if fila_pivote >= n: break
-                continue
-            if a != 1:
-                Aw[fila_pivote] = [v / a for v in Aw[fila_pivote]]
-                Iw[fila_pivote] = [v / a for v in Iw[fila_pivote]]
-                self.result_box.insertPlainText("OperaciÃ³n: ")
-                self.result_box.insertPlainText(f"R{fila_pivote+1} \u2192 R{fila_pivote+1}/{a}\n\n")
-                for ln in augmented_lines(Aw, Iw):
+
+        # Determinar si hay n pivotes (nota: si se saltó GJ, pivot_cols estará vacío)
+        invertible_by_piv = (len(pivot_cols) == n)
+
+        # Si Gauss-Jordan se ejecutó y la matriz es invertible, mostrar visualmente
+        # la transformación final [I | A^-1] de forma ordenada en la interfaz.
+        if not (self.rb_adj.isChecked() and n <= 3) and invertible_by_piv:
+            _clear_visuals()
+            box_final_left = QFrame(); box_final_left.setLayout(QVBoxLayout())
+            box_final_left.layout().addWidget(QLabel("Matriz Identidad(I):"))
+            box_final_left.layout().addWidget(_matrix_widget(self, Aw))
+            box_final_right = QFrame(); box_final_right.setLayout(QVBoxLayout())
+            box_final_right.layout().addWidget(QLabel("Matriz Inversa (A^{-1}):"))
+            box_final_right.layout().addWidget(_matrix_widget(self, Iw))
+            self.visual_frame.layout().addWidget(box_final_left)
+            self.visual_frame.layout().addWidget(box_final_right)
+            # También añadir una sección textual final en el recuadro de pasos
+            self.result_box.insertPlainText("\nMatriz aumentada final [I | A^-1]:\n")
+            for ln in augmented_lines(Aw, Iw):
+                self.result_box.insertPlainText(ln + "\n")
+
+        # Si Gauss-Jordan se ejecutó (pivot_cols no vacío) y no es invertible, mostrar diálogo
+        if pivot_cols and len(pivot_cols) != n:
+            # Construir mensaje explicativo usando las reglas c/d/e
+            expl = explain_cde_text(Aw)
+            QMessageBox.critical(self, "Sin inversa (Gauss-Jordan)", "La matriz no es invertible.\n\n" + expl)
+            # Además anexar la explicación al cuadro de pasos para evidencia
+            self.result_box.insertPlainText("\n" + expl + "\n")
+            # Si se llegó aquí por elegir Adjunta pero n>3, no return — dejar que flujo continúe.
+            # Si se llegó por GJ deliberado, no continuar con adjunta mostrando matrices.
+            if not (self.rb_adj.isChecked() and n <= 3):
+                return
+
+        # Si el usuario eligió adjunta y la dimensión es adecuada, usar adjunta
+        if self.rb_adj.isChecked():
+            if n > 3:
+                QMessageBox.information(self, "Info", "Adjunta solo disponible para n ≤ 3. Usando Gauss-Jordan.")
+            else:
+                # Calcular determinante
+                det, det_steps = determinante_con_pasos(Aw)
+
+                # Helper para submatrices
+                def minor(M, r, c):
+                    return [[M[i][j] for j in range(len(M)) if j != c] for i in range(len(M)) if i != r]
+
+                # Helper para formatear submatrices en varias líneas
+                def format_submatrix(M):
+                    if not M:
+                        return "[]"
+                    rows = ["[" + ", ".join(str(x) for x in r) + "]" for r in M]
+                    if len(rows) == 1:
+                        return "[" + rows[0] + "]"
+                    return "[" + ",\n           ".join(rows) + "]"
+
+                # Mostrar el procedimiento del determinante de forma ordenada (expansión por cofactores
+                # en la primera fila). Si resulta 0, NO se muestran matrices, sólo este procedimiento
+                # y un mensaje claro al usuario.
+                self.result_box.insertPlainText("1) Cálculo del determinante |A|\n")
+                self.result_box.insertPlainText("Expansión por cofactores en la primera fila:\n\n")
+
+                # Para cada elemento de la primera fila mostrar su menor y el valor del cofactor
+                first_row_contribs = []
+                for j in range(n):
+                    sub = minor(Aw, 0, j)
+                    sub_det, _ = determinante_con_pasos(sub)
+                    sign = 1 if (j % 2 == 0) else -1
+                    cofactor = Fraction(sign) * sub_det
+
+                    # Formatear submatriz en bloque alineado (cada fila en su propia línea)
+                    sub_rows = ["[" + ", ".join(str(x) for x in r) + "]" for r in sub]
+                    if len(sub_rows) == 1:
+                        sub_block = sub_rows[0]
+                        self.result_box.insertPlainText(
+                            f"M1{j+1} = det({sub_block}) = {sub_det}   →  C1{j+1} = ({'+' if sign>0 else '-'})·{sub_det} = {cofactor}\n\n"
+                        )
+                    else:
+                        sub_block = "[\n" + "\n".join("    " + r for r in sub_rows) + "\n]"
+                        self.result_box.insertPlainText(
+                            f"M1{j+1} = det({sub_block}) = {sub_det}   →  C1{j+1} = ({'+' if sign>0 else '-'})·{sub_det} = {cofactor}\n\n"
+                        )
+
+                    first_row_contribs.append((Aw[0][j], cofactor))
+
+                # Fórmula por cofactores y evaluación
+                terms = " + ".join(f"a1{j+1}·C1{j+1}" for j in range(n))
+                self.result_box.insertPlainText("|A| = " + terms + "\n")
+                eval_terms = " + ".join(f"({Aw[0][j]})({first_row_contribs[j][1]})" for j in range(n))
+                self.result_box.insertPlainText("    = " + eval_terms + "\n")
+                total = sum(Aw[0][j] * first_row_contribs[j][1] for j in range(n))
+                self.result_box.insertPlainText(f"    = {total}\n\n")
+
+                # Si el determinante es cero, mostrar mensaje crítico y un bloque de conclusión
+                if total == 0:
+                    QMessageBox.critical(self, "Sin inversa", "La matriz no es invertible porque su determinante es 0.")
+                    # Mensaje final con formato claro y alineado
+                    self.result_box.insertPlainText("Resultado:\n\n")
+                    self.result_box.insertPlainText("El determinante de la matriz es 0.\n\n")
+                    self.result_box.insertPlainText("Esto significa que la matriz no es invertible,\n")
+                    self.result_box.insertPlainText("ya que su determinante es igual a cero.\n\n")
+                    self.result_box.insertPlainText("Por lo tanto, no existe la matriz inversa A^-1.\n\n")
+                    # además mostrar la explicación c/d/e en el recuadro para aportar evidencia adicional
+                    for l in explain_cde(Aw):
+                        self.result_box.insertPlainText(l + "\n")
+                    return
+
+                # Si det != 0, entonces construir cofactores y adjunta
+                cof = [[None for _ in range(n)] for __ in range(n)]
+                for i in range(n):
+                    for j in range(n):
+                        sub = minor(Aw, i, j)
+                        sub_det, _ = determinante_con_pasos(sub)
+                        cof[i][j] = Fraction((1 if ((i + j) % 2 == 0) else -1)) * sub_det
+
+                # adjunta = transpuesta de cofactores
+                adj = [[cof[j][i] for j in range(n)] for i in range(n)]
+
+                # Mostrar visualmente: A, Adj(A), A^{-1}
+                _clear_visuals()
+                boxA = QFrame(); boxA.setLayout(QVBoxLayout())
+                boxA.layout().addWidget(QLabel("Matriz A:"))
+                boxA.layout().addWidget(_matrix_widget(self, Aw))
+                boxAdj = QFrame(); boxAdj.setLayout(QVBoxLayout())
+                boxAdj.layout().addWidget(QLabel("Adj(A) (transpuesta de la matriz de cofactores):"))
+                boxAdj.layout().addWidget(_matrix_widget(self, adj))
+
+                # preparar contenedor para la inversa
+                boxInv = QFrame(); boxInv.setLayout(QVBoxLayout())
+                boxInv.layout().addWidget(QLabel("A^{-1} (inversa):"))
+
+                self.visual_frame.layout().addWidget(boxA)
+                self.visual_frame.layout().addWidget(boxAdj)
+                self.visual_frame.layout().addWidget(boxInv)
+
+                # Formato mejorado y legible del recuadro de pasos
+                # 1) Cálculo del determinante |A| por expansión por cofactores en la primera fila
+                self.result_box.insertPlainText("1) Cálculo del determinante |A|\n")
+                self.result_box.insertPlainText("Expansión por cofactores en la primera fila:\n\n")
+                # Listar M1j y C1j para j=1..n con espacios y saltos claros
+                for j in range(n):
+                    sub = minor(Aw, 0, j)
+                    sub_det, sub_steps = determinante_con_pasos(sub)
+                    sign = 1 if (j % 2 == 0) else -1
+                    sub_fmt = format_submatrix(sub)
+                    self.result_box.insertPlainText(f"M1{j+1} = det({sub_fmt}) = {sub_det}\n")
+                    # añadir una línea con flecha → C1j
+                    self.result_box.insertPlainText(f"    -> C1{j+1} = ({'+' if sign>0 else '-'})·{sub_det} = {Fraction(sign)*sub_det}\n\n")
+
+                # fórmula del determinante por cofactores (primera fila) y evaluación
+                terms = " + ".join(f"a1{j+1}·C1{j+1}" for j in range(n))
+                self.result_box.insertPlainText("|A| = " + terms + "\n")
+                eval_terms = " + ".join(f"({Aw[0][j]})({Fraction(cof[0][j])})" for j in range(n))
+                self.result_box.insertPlainText("    = " + eval_terms + "\n")
+                total = sum(Aw[0][j] * cof[0][j] for j in range(n))
+                self.result_box.insertPlainText(f"    = {total}\n\n")
+
+                # Si el determinante es cero, informar y mostrar el diálogo de error.
+                if total == 0:
+                    QMessageBox.critical(self, "Sin inversa", "La matriz no es invertible porque su determinante es 0.")
+                    # Ya mostramos el procedimiento del determinante arriba; terminar.
+                    return
+
+                # 2) Matriz de cofactores de A (tabla compacta)
+                self.result_box.insertPlainText("2) Matriz de cofactores de A\n")
+                sep = "-" * 75
+                self.result_box.insertPlainText(sep + "\n")
+                self.result_box.insertPlainText("| Posición |       M_ij (submatriz)       | det(M_ij) |  C_ij  |\n")
+                self.result_box.insertPlainText(sep + "\n")
+                for i in range(n):
+                    for j in range(n):
+                        sub = minor(Aw, i, j)
+                        sub_det, _ = determinante_con_pasos(sub)
+                        cij = cof[i][j]
+                        sub_str = format_submatrix(sub)
+                        # separar visualmente cada fila
+                        self.result_box.insertPlainText(f"| C{i+1}{j+1} | {sub_str:<30} | {str(sub_det):>8} | {str(cij):>6} |\n")
+                self.result_box.insertPlainText(sep + "\n\n")
+
+                # 3) Matriz Adjunta
+                self.result_box.insertPlainText("3) Matriz Adjunta\n")
+                self.result_box.insertPlainText("Adj(A) = (Cof(A))^T  (traspuesta de la matriz de cofactores)\n\n")
+                for ln in (" ".join(str(v) for v in row) for row in adj):
                     self.result_box.insertPlainText(ln + "\n")
-                self.result_box.insertPlainText("\n" + ("-" * 110) + "\n\n")
+                self.result_box.insertPlainText("\n")
 
-            for r in range(n):
-                if r == fila_pivote: continue
-                f = Aw[r][col]
-                if f == 0: continue
-                origA = Aw[r][:]; origI = Iw[r][:]
-                pivA = Aw[fila_pivote][:]; pivI = Iw[fila_pivote][:]
-                Aw[r] = [origA[j] - f * pivA[j] for j in range(n)]
-                Iw[r] = [origI[j] - f * pivI[j] for j in range(n)]
-                fp = pivA + pivI
-                fa = origA + origI
-                fr = Aw[r] + Iw[r]
-                left_lines = operacion_vertical_aug(fp, fa, f, fr)
-                right_lines = augmented_lines(Aw, Iw)
-                self.result_box.insertPlainText("OperaciÃ³n: ")
-                self.result_box.insertPlainText(f"R{r+1} \u2192 R{r+1} - ({f})R{fila_pivote+1}\n\n")
-                max_left = max(len(s) for s in left_lines) if left_lines else 0
-                sep = "   |   "
-                max_len = max(len(left_lines), len(right_lines))
-                for i in range(max_len):
-                    l = left_lines[i] if i < len(left_lines) else ""
-                    rr = right_lines[i] if i < len(right_lines) else ""
-                    self.result_box.insertPlainText(l.ljust(max_left) + (sep if rr else "") + rr + "\n")
-                self.result_box.insertPlainText("\n" + ("-" * 110) + "\n\n")
+                # 4) Cálculo de la inversa (det != 0 en este punto)
+                inv = [[adj[i][j] / total for j in range(n)] for i in range(n)]
+                # Mostrar resultado numérico y visual
+                boxInv.layout().addWidget(_matrix_widget(self, inv))
+                self.visual_frame.layout().addWidget(boxInv)
+                self.result_box.insertPlainText("4) Cálculo de la inversa\n")
+                self.result_box.insertPlainText(f"Como |A| = {total},\nA^-1 = (1 / |A|) · Adj(A)\n")
+                self.result_box.insertPlainText(f"A^-1 = (1 / {total}) · Adj(A)\n\n")
+                self.result_box.insertPlainText("A^-1 =\n")
+                for ln in (" ".join(str(v) for v in row) for row in inv):
+                    self.result_box.insertPlainText(ln + "\n")
 
-            pivot_cols.append(col)
-            fila_pivote += 1
-            if fila_pivote >= n: break
+                # Conclusión (comprobación c/d/e)
+                self.result_box.insertPlainText("\nConclusión: la matriz es invertible y la inversa se ha calculado como arriba.\n\n")
+                for l in explain_cde(Aw):
+                    self.result_box.insertPlainText(l + "\n")
+                return
 
-        if len(pivot_cols) != n:
-            self.result_box.insertPlainText("La matriz no es invertible (no se encontraron n pivotes).\n")
+        # Si llegamos aquí, proceder con Gauss-Jordan (sea por selección o por limitación de adjunta)
+        if not self.cb_anim.isChecked():
+            # mostrar explicación aunque no se anime
+            pass
+
+        if not invertible_by_piv:
+            # Mostrar pasos (ya se hicieron) y justificar con c/d/e
+            self.result_box.insertPlainText("\nLa matriz no es invertible (no se encontraron n pivotes).\n\n")
+            for l in explain_cde(Aw):
+                self.result_box.insertPlainText(l + "\n")
             return
 
         # Mostrar inversa
         self.result_box.insertPlainText("Matriz inversa:\n\n")
         self.result_box.insertPlainText("\n".join(" ".join(str(v) for v in row) for row in Iw) + "\n")
+        # mensaje final: es invertible y por qué
+        self.result_box.insertPlainText("\nConclusión: La matriz es invertible porque:\n")
+        for l in explain_cde(Aw):
+            self.result_box.insertPlainText(l + "\n")
 
 
 
