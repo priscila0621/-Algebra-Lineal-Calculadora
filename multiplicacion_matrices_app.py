@@ -65,6 +65,33 @@ class MultiplicacionMatricesApp:
         s = s.replace(",", ".")
         return Fraction(s)
 
+    def _buscar_incompatibilidad_dimensiones(self, dims):
+        """
+        Retorna una tupla con informacion de la primera incompatibilidad encontrada.
+        Formato: (indice_base, columnas_actual, filas_siguiente, dim_actual, dim_siguiente)
+        Si no hay incompatibilidades devuelve None.
+        """
+        for idx in range(len(dims) - 1):
+            columnas_actual = dims[idx][1]
+            filas_siguiente = dims[idx + 1][0]
+            if columnas_actual != filas_siguiente:
+                return idx, columnas_actual, filas_siguiente, dims[idx], dims[idx + 1]
+        return None
+
+    def _matriz_coincide_dim(self, matriz, dim):
+        """
+        Verifica si la matriz proporcionada coincide con las dimensiones esperadas (filas x columnas).
+        """
+        if not matriz:
+            return False
+        filas, columnas = dim
+        if len(matriz) != filas:
+            return False
+        try:
+            return all(len(fila) == columnas for fila in matriz)
+        except Exception:
+            return False
+
     # Bienvenida
     def _crear_bienvenida(self):
         f = self.frames["bienvenida"]
@@ -115,6 +142,15 @@ class MultiplicacionMatricesApp:
         self.dim_entries = []
         tk.Label(self.frame_dims, text="Ingrese dimensiones:", bg=self.bg, font=("Segoe UI", 12))\
             .pack(anchor="w", pady=(0, 6))
+        tk.Label(
+            self.frame_dims,
+            text="Regla: si A es m x n y B es p x q, entonces n debe ser igual a p para poder multiplicar.",
+            bg=self.bg,
+            fg="#7f1d1d",
+            font=("Segoe UI", 10),
+            wraplength=760,
+            justify="left"
+        ).pack(anchor="w", pady=(0, 8))
         for i in range(n):
             rowf = tk.Frame(self.frame_dims, bg=self.bg); rowf.pack(anchor="w", pady=6)
             tk.Label(rowf, text=f"Matriz {i+1}:", bg=self.bg, width=10).pack(side="left", padx=6)
@@ -131,14 +167,31 @@ class MultiplicacionMatricesApp:
                 if f <= 0 or c <= 0:
                     raise ValueError
                 dims.append((f, c))
-            # compatibilidad: cols(A_i) = filas(A_{i+1})
-            for i in range(len(dims) - 1):
-                if dims[i][1] != dims[i+1][0]:
-                    messagebox.showerror("Error",
-                                         f"Columnas de Matriz {i+1} deben coincidir con filas de Matriz {i+2}.")
-                    return
+            incompatibilidad = self._buscar_incompatibilidad_dimensiones(dims)
+            if incompatibilidad:
+                idx, columnas, filas, dim_actual, dim_siguiente = incompatibilidad
+                messagebox.showerror(
+                    "Dimensiones incompatibles",
+                    (
+                        f"No se puede multiplicar Matriz {idx+1} ({dim_actual[0]}x{dim_actual[1]}) "
+                        f"con Matriz {idx+2} ({dim_siguiente[0]}x{dim_siguiente[1]}).\n"
+                        f"Las columnas de la primera ({columnas}) deben ser iguales "
+                        f"a las filas de la segunda ({filas})."
+                    ),
+                )
+                return
+            prev_dims = getattr(self, "dimensiones", [])
+            prev_matrices = getattr(self, "matrices", [])
+            nuevas_matrices = []
+            for idx, dim in enumerate(dims):
+                if idx < len(prev_dims) and idx < len(prev_matrices):
+                    matriz_existente = prev_matrices[idx]
+                    if prev_dims[idx] == dim and self._matriz_coincide_dim(matriz_existente, dim):
+                        nuevas_matrices.append(matriz_existente)
+                        continue
+                nuevas_matrices.append(None)
             self.dimensiones = dims
-            self.matrices = [None] * self.num_matrices
+            self.matrices = nuevas_matrices
             self.current_index = 0
             self._mostrar_frame("ingreso")
             self._render_ingreso_actual()
@@ -170,7 +223,7 @@ class MultiplicacionMatricesApp:
         self.ing_error.config(text="")
         idx = self.current_index
         f, c = self.dimensiones[idx]
-        self.label_ing_title.config(text=f"Ingresa los valores de la Matriz {idx+1} ({f}×{c})")
+        self.label_ing_title.config(text=f"Ingresa los valores de la Matriz {idx+1} ({f}x{c})")
         self.entries_grid = []
         grid = tk.Frame(self.ing_table, bg=self.bg); grid.pack()
         for i in range(f):
@@ -180,6 +233,12 @@ class MultiplicacionMatricesApp:
                 e.grid(row=i, column=j, padx=6, pady=6)
                 row_entries.append(e)
             self.entries_grid.append(row_entries)
+        matriz_guardada = self.matrices[idx] if idx < len(self.matrices) else None
+        if self._matriz_coincide_dim(matriz_guardada, (f, c)):
+            for i, fila in enumerate(self.entries_grid):
+                for j, entrada in enumerate(fila):
+                    entrada.delete(0, "end")
+                    entrada.insert(0, str(matriz_guardada[i][j]))
 
     def _ingresar_anterior(self):
         if self.current_index > 0:
@@ -216,6 +275,22 @@ class MultiplicacionMatricesApp:
 
     def _calcular_multiplicacion(self):
         try:
+            dims_reales = []
+            for idx, mat in enumerate(self.matrices, start=1):
+                if not mat or not mat[0]:
+                    messagebox.showerror("Error", f"Matriz {idx} no tiene datos suficientes.")
+                    return
+                dims_reales.append((len(mat), len(mat[0])))
+            incompatibilidad = self._buscar_incompatibilidad_dimensiones(dims_reales)
+            if incompatibilidad:
+                idx_incomp, columnas, filas, dim_actual, dim_siguiente = incompatibilidad
+                messagebox.showerror("Dimensiones incompatibles", (
+                    f"No se puede multiplicar Matriz {idx_incomp+1} ({dim_actual[0]}x{dim_actual[1]}) "
+                    f"con Matriz {idx_incomp+2} ({dim_siguiente[0]}x{dim_siguiente[1]}).\n"
+                    f"Las columnas de la primera ({columnas}) deben ser iguales a las filas de la segunda ({filas})."
+                ))
+                return
+
             parcial = self.matrices[0]
             pasos_general = []
             for ix in range(1, len(self.matrices)):
@@ -225,7 +300,7 @@ class MultiplicacionMatricesApp:
             self._mostrar_resultados(parcial, pasos_general)
             self._mostrar_frame("resultados")
         except Exception as e:
-            messagebox.showerror("Error", f"Ocurrió un problema: {e}")
+            messagebox.showerror("Error", f"Ocurrio un problema: {e}")
 
     def _multiplicar_con_detalle(self, A, B):
         fa, ca = len(A), len(A[0])
