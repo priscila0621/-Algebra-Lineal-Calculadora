@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt
 from .menu_matrices_qt import MenuMatricesWindow
 from .sistemas.gauss_jordan_qt import GaussJordanWindow
 from .independencia_qt import IndependenciaWindow
+from .transformaciones_qt import TransformacionesWindow
 from .theme import make_theme_toggle_button, install_toggle_shortcut
 
 
@@ -65,6 +66,11 @@ class MenuPrincipalWindow(QMainWindow):
         btn3.clicked.connect(self._open_independencia)
         lay.addWidget(btn3)
 
+        btn4 = QPushButton("Transformaciones lineales (T(x)=Ax)")
+        btn4.setMinimumHeight(44)
+        btn4.clicked.connect(self._open_transformaciones)
+        lay.addWidget(btn4)
+
         lay.addStretch(1)
 
         # Atajo Ctrl+D
@@ -80,6 +86,10 @@ class MenuPrincipalWindow(QMainWindow):
 
     def _open_independencia(self):
         self.w = IndependenciaWindow(parent=self)
+        self.w.showMaximized()
+
+    def _open_transformaciones(self):
+        self.w = TransformacionesWindow(parent=self)
         self.w.showMaximized()
 
 

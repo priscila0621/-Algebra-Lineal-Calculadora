@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 from gauss_jordan_app import GaussJordanApp
 from menu_matrices import MenuMatrices
 from independencia_lineal import IndependenciaLinealApp
+from transformaciones_lineales_app import TransformacionesLinealesApp
 
 class MenuPrincipal:
     def __init__(self, root):
@@ -48,6 +49,9 @@ class MenuPrincipal:
         ttk.Button(root, text="Independencia lineal de vectores",
                    style="Primary.TButton", command=self.abrir_independencia_lineal).pack(pady=10)
 
+        ttk.Button(root, text="Transformaciones lineales (T(x)=Ax)",
+                   style="Primary.TButton", command=self.abrir_transformaciones).pack(pady=10)
+
     # ======================
     # Métodos
     # ======================
@@ -67,6 +71,12 @@ class MenuPrincipal:
         self.root.destroy()
         root2 = tk.Tk()
         IndependenciaLinealApp(root2, lambda: self.volver_inicio(root2))
+        root2.mainloop()
+
+    def abrir_transformaciones(self):
+        self.root.destroy()
+        root2 = tk.Tk()
+        TransformacionesLinealesApp(root2, lambda: self.volver_inicio(root2))
         root2.mainloop()
 
     def volver_inicio(self, ventana_actual):
