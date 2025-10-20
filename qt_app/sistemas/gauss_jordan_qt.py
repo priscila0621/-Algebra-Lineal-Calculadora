@@ -60,9 +60,7 @@ class GaussJordanWindow(QMainWindow):
         self.btn_limpiar = QPushButton("Limpiar pantalla")
         self.btn_limpiar.clicked.connect(self._limpiar)
         top.addWidget(self.btn_limpiar)
-        self.btn_verif_indep = QPushButton("Verificar independencia")
-        self.btn_verif_indep.clicked.connect(self._verificar_independencia)
-        top.addWidget(self.btn_verif_indep)
+        # Botón de verificación de independencia retirado a petición del usuario
         top.addStretch(1)
 
         self.scroll = QScrollArea()
@@ -258,15 +256,7 @@ class GaussJordanWindow(QMainWindow):
             self.detalle_button.setText("Ocultar pasos detallados")
             self.mostrando_detalles = True
 
-    def _verificar_independencia(self):
-        try:
-            A = self._leer_matriz()
-            vectores = list(map(list, zip(*[row[:-1] for row in A])))
-            from independencia_lineal import son_linealmente_independientes
-            ok, texto = son_linealmente_independientes(vectores)
-            QMessageBox.information(self, "Independencia lineal", texto)
-        except Exception as exc:
-            QMessageBox.warning(self, "Aviso", f"No se pudo verificar: {exc}")
+    # _verificar_independencia retirado a petición del usuario
 
     def _go_back(self):
         try:
