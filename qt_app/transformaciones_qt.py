@@ -161,6 +161,57 @@ def _format_product(A, x, b=None):
     return lines
 
 
+def _format_vector_column(vec):
+    vals = [_fmt(v) for v in vec]
+    w = max((len(s) for s in vals), default=1)
+    return "\n".join("[ " + s.rjust(w) + " ]" for s in vals)
+
+
+def _format_matrix(A):
+    if not A:
+        return "[ ]"
+    m = len(A); n = len(A[0])
+    col_w = [0]*n
+    for j in range(n):
+        col_w[j] = max(len(_fmt(A[i][j])) for i in range(m))
+    lines = []
+    for i in range(m):
+        row = " ".join(_fmt(A[i][j]).rjust(col_w[j]) for j in range(n))
+        lines.append("[ " + row + " ]")
+    return "\n".join(lines)
+
+
+def _dot_steps(A, x, b):
+    m = len(A); n = len(A[0]) if A else 0
+    steps = ["", "  Detalle por filas (producto punto):"]
+    for i in range(m):
+        mults = [f"({_fmt(A[i][j])})*({_fmt(x[j])})" for j in range(n)]
+        prods = [A[i][j]*x[j] for j in range(n)]
+        sums = " + ".join(_fmt(p) for p in prods)
+        steps.append(f"  Fila {i+1}: " + " + ".join(mults) + f" = {sums} = {_fmt(b[i])}")
+    return steps
+
+
+def _format_scaled_sum(c, Tu, d, Tv, result):
+    sc = _fmt(c); sd = _fmt(d)
+    m = len(Tu)
+    wt = max((len(_fmt(x)) for x in Tu), default=1)
+    wv = max((len(_fmt(x)) for x in Tv), default=1)
+    wr = max((len(_fmt(x)) for x in result), default=1)
+    ws1 = len(sc); ws2 = len(sd)
+    lines = []
+    for i in range(m):
+        coef1 = sc if i == 0 else " "*ws1
+        coef2 = sd if i == 0 else " "*ws2
+        t = _fmt(Tu[i]).rjust(wt)
+        v = _fmt(Tv[i]).rjust(wv)
+        r = _fmt(result[i]).rjust(wr)
+        if i == 0:
+            lines.append(f"= {coef1} [ {t} ]  +  {coef2} [ {v} ] = [ {r} ]")
+        else:
+            lines.append(f"  {coef1} [ {t} ]     {coef2} [ {v} ]   [ {r} ]")
+    return lines
+
 class TransformacionesWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -188,6 +239,10 @@ class TransformacionesWindow(QMainWindow):
         # Tab 3
         self.tab_lin = QWidget(); tabs.addTab(self.tab_lin, "Comprobar linealidad")
         self._build_tab_linealidad()
+
+        # Tab 4
+        self.tab_axb = QWidget(); tabs.addTab(self.tab_axb, "Resolver Ax=b")
+        self._build_tab_axb()
 
     # ------- Tab 1: T(x)=Ax -------
     def _build_tab_ax(self):
@@ -349,6 +404,119 @@ class TransformacionesWindow(QMainWindow):
         self.n3.valueChanged.connect(self._crear_linealidad)
         self._crear_linealidad()
 
+    # ------- Tab 4: Resolver Ax=b -------
+    def _build_tab_axb(self):
+        lay = QVBoxLayout(self.tab_axb)
+        cfg = QHBoxLayout(); lay.addLayout(cfg)
+        cfg.addWidget(QLabel("m (filas):"))
+        self.m4 = QSpinBox(); self.m4.setRange(1, 10); self.m4.setValue(3); cfg.addWidget(self.m4)
+        cfg.addWidget(QLabel("n (columnas):"))
+        self.n4 = QSpinBox(); self.n4.setRange(1, 10); self.n4.setValue(2); cfg.addWidget(self.n4)
+        btn = QPushButton("Crear A y b"); btn.clicked.connect(self._crear_axb); cfg.addWidget(btn); cfg.addStretch(1)
+
+        self.grid4 = QWidget(); self.grid4_lay = QGridLayout(self.grid4)
+        self.grid4_lay.setHorizontalSpacing(6); self.grid4_lay.setVerticalSpacing(6)
+        lay.addWidget(self.grid4)
+
+        self.out4 = QTextEdit(); self.out4.setReadOnly(True)
+        self.out4.setStyleSheet("font-family:Consolas,monospace;font-size:12px;")
+        lay.addWidget(self.out4, 1)
+
+        self.m4.valueChanged.connect(self._crear_axb)
+        self.n4.valueChanged.connect(self._crear_axb)
+        self._crear_axb()
+
+    def _crear_axb(self):
+        for i in reversed(range(self.grid4_lay.count())):
+            w = self.grid4_lay.itemAt(i).widget()
+            if w: w.setParent(None)
+        m, n = self.m4.value(), self.n4.value()
+        self.A4 = [[QLineEdit() for j in range(n)] for i in range(m)]
+        self.b4 = [QLineEdit() for _ in range(m)]
+        self.grid4_lay.addWidget(QLabel("A (m×n)"), 0, 0)
+        for i in range(m):
+            for j in range(n):
+                e = self.A4[i][j]; e.setAlignment(Qt.AlignCenter); e.setPlaceholderText("0")
+                self.grid4_lay.addWidget(e, i+1, j)
+        self.grid4_lay.addWidget(QLabel("b"), 0, n)
+        for i in range(m):
+            e = self.b4[i]; e.setAlignment(Qt.AlignCenter); e.setPlaceholderText("0")
+            self.grid4_lay.addWidget(e, i+1, n)
+        solve = QPushButton("Resolver Ax=b"); solve.clicked.connect(self._resolver_axb)
+        self.grid4_lay.addWidget(solve, m+2, 0, 1, n+1)
+
+    def _format_aug(self, M):
+        m = len(M); n = len(M[0])-1 if m else 0
+        col_w = [0]*n
+        for j in range(n):
+            col_w[j] = max(len(_fmt(M[i][j])) for i in range(m)) if m else 1
+        bw = max((len(_fmt(M[i][-1])) for i in range(m)), default=1)
+        lines = []
+        for i in range(m):
+            left = " ".join(_fmt(M[i][j]).rjust(col_w[j]) for j in range(n))
+            right = _fmt(M[i][-1]).rjust(bw)
+            lines.append("[ " + left + "  |  " + right + " ]")
+        return "\n".join(lines)
+
+    def _resolver_axb(self):
+        try:
+            m, n = self.m4.value(), self.n4.value()
+            A = [[_parse(self.A4[i][j].text()) for j in range(n)] for i in range(m)]
+            b = [_parse(self.b4[i].text()) for i in range(m)]
+            M = [row[:] + [b[i]] for i, row in enumerate(A)]
+            pasos = ["Matriz aumentada [A | b]:\n" + self._format_aug(M) + "\n"]
+            r = 0; piv_cols = []
+            for c in range(n):
+                p = None
+                for i in range(r, m):
+                    if M[i][c] != 0:
+                        p = i; break
+                if p is None:
+                    continue
+                if p != r:
+                    M[r], M[p] = M[p], M[r]
+                    pasos.append(f"Intercambio F{r+1} ↔ F{p+1}\n" + self._format_aug(M) + "\n")
+                piv = M[r][c]
+                if piv != 1:
+                    M[r] = [x / piv for x in M[r]]
+                    pasos.append(f"F{r+1} ← F{r+1} / {_fmt(piv)}\n" + self._format_aug(M) + "\n")
+                for i in range(m):
+                    if i != r and M[i][c] != 0:
+                        fac = M[i][c]
+                        M[i] = [M[i][k] - fac*M[r][k] for k in range(n+1)]
+                        pasos.append(f"F{i+1} ← F{i+1} - ({_fmt(fac)})·F{r+1}\n" + self._format_aug(M) + "\n")
+                piv_cols.append(c); r += 1
+                if r == m: break
+
+            for i in range(m):
+                if all(M[i][j] == 0 for j in range(n)) and M[i][-1] != 0:
+                    self.out4.setPlainText("Sistema inconsistente.\n\n" + "\n".join(pasos))
+                    return
+            if len(piv_cols) == n:
+                x = [Fraction(0)]*n
+                for i, c in enumerate(piv_cols):
+                    x[c] = M[i][-1]
+                vals_fmt = [_fmt(xi) for xi in x]
+                linea_vars = ", ".join([f"x{j+1} = {vals_fmt[j]}" for j in range(n)])
+                col_txt = _format_vector_column(x)
+                fila_txt = "[ " + ", ".join(vals_fmt) + " ]^T"
+                aprox = ", ".join([f"{float(xi):.6g}" for xi in x])
+                out = [
+                    "RREF de [A|b] y pasos:\n" + self._format_aug(M),
+                    "\nSolución única:",
+                    linea_vars,
+                    "\nVector columna:",
+                    col_txt,
+                    "\nVector fila:",
+                    fila_txt,
+                    f"\nAproximado: ({aprox})^T",
+                ]
+                self.out4.setPlainText("\n".join(pasos) + "\n" + "\n".join(out))
+            else:
+                self.out4.setPlainText("Sistema con infinitas soluciones (parámetros libres).\n\n" + "\n".join(pasos) + "\nRREF:\n" + self._format_aug(M))
+        except Exception as exc:
+            QMessageBox.warning(self, "Aviso", f"No se pudo resolver Ax=b: {exc}")
+
     def _crear_linealidad(self):
         for i in reversed(range(self.grid3_lay.count())):
             w = self.grid3_lay.itemAt(i).widget()
@@ -380,7 +548,7 @@ class TransformacionesWindow(QMainWindow):
         self.d3 = QLineEdit("1"); self.d3.setAlignment(Qt.AlignCenter)
         self.grid3_lay.addWidget(self.d3, 1, n+3)
 
-        check = QPushButton("Comprobar"); check.clicked.connect(self._check_lin)
+        check = QPushButton("Comprobar"); check.clicked.connect(self._check_lin_steps)
         self.grid3_lay.addWidget(check, m+2, 0, 1, n+4)
 
     def _check_lin(self):
@@ -402,6 +570,61 @@ class TransformacionesWindow(QMainWindow):
             lines.append("T(v) = [" + ", ".join(_fmt(x) for x in Tv) + "]")
             lines.append("T(cu+dv) = [" + ", ".join(_fmt(x) for x in Tcu_dv) + "]")
             lines.append("cT(u)+dT(v) = [" + ", ".join(_fmt(x) for x in cTu_dTv) + "]")
+            self.out3.setPlainText("\n".join(lines))
+        except Exception as exc:
+            QMessageBox.warning(self, "Aviso", f"No se pudo comprobar: {exc}")
+
+    # Nuevo método con pasos detallados y alineados
+    def _check_lin_steps(self):
+        try:
+            m, n = self.m3.value(), self.n3.value()
+            A = [[_parse(self.A3[i][j].text()) for j in range(n)] for i in range(m)]
+            u = [_parse(e.text()) for e in self.u3]
+            v = [_parse(e.text()) for e in self.v3]
+            c = _parse(self.c3.text())
+            d = _parse(self.d3.text())
+            cu_dv = [c*ui + d*vi for ui, vi in zip(u, v)]
+            Tu = _matmul(A, u)
+            Tv = _matmul(A, v)
+            Tcu_dv = _matmul(A, cu_dv)
+            cTu_dTv = [c*Tu[i] + d*Tv[i] for i in range(len(Tu))]
+            ok = all(Tcu_dv[i] == cTu_dTv[i] for i in range(len(Tu)))
+
+            lines = ["Comprobación de linealidad (paso a paso):", ""]
+            lines.append("Paso 1) Datos:")
+            lines.append("A = \n" + _format_matrix(A))
+            lines.append("u = \n" + _format_vector_column(u))
+            lines.append("v = \n" + _format_vector_column(v))
+            lines.append(f"c = {_fmt(c)},   d = {_fmt(d)}")
+
+            lines.append("")
+            lines.append("Paso 2) Vector cu + dv (componente a componente):")
+            for j in range(n):
+                part1 = _fmt(c*u[j]); part2 = _fmt(d*v[j])
+                lines.append(f"  comp {j+1}: {_fmt(c)}*{_fmt(u[j])} + {_fmt(d)}*{_fmt(v[j])} = {part1} + {part2} = {_fmt(cu_dv[j])}")
+            lines.append("cu+dv =\n" + _format_vector_column(cu_dv))
+
+            lines.append("")
+            lines.append("Paso 3) T(u) = A·u:")
+            lines += _format_product(A, u, Tu)
+            lines += _dot_steps(A, u, Tu)
+
+            lines.append("")
+            lines.append("Paso 4) T(v) = A·v:")
+            lines += _format_product(A, v, Tv)
+            lines += _dot_steps(A, v, Tv)
+
+            lines.append("")
+            lines.append("Paso 5) T(cu+dv) = A·(cu+dv):")
+            lines += _format_product(A, cu_dv, Tcu_dv)
+            lines += _dot_steps(A, cu_dv, Tcu_dv)
+
+            lines.append("")
+            lines.append("Paso 6) cT(u) + dT(v):")
+            lines += _format_scaled_sum(c, Tu, d, Tv, cTu_dTv)
+
+            lines.append("")
+            lines.append("Conclusión: T(cu+dv) y cT(u)+dT(v) son iguales" if ok else "Conclusión: No son iguales")
             self.out3.setPlainText("\n".join(lines))
         except Exception as exc:
             QMessageBox.warning(self, "Aviso", f"No se pudo comprobar: {exc}")
