@@ -24,7 +24,7 @@ def _matrix_widget(parent: QWidget, mat):
         for j, val in enumerate(row):
             lbl = QLabel(str(val))
             lbl.setAlignment(Qt.AlignCenter)
-            lbl.setStyleSheet("background:#fff0f5;border:1px solid #ccc;padding:6px;font-family:Segoe UI;")
+            lbl.setStyleSheet("background:#ffffff;border:1px solid #ccc;padding:6px;font-family:Segoe UI;font-size:14px;color:#000;font-weight:600;")
             grid.addWidget(lbl, i, j)
     return wrapper
 
@@ -275,6 +275,15 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
         self.p_edit = QLineEdit("2"); self.p_edit.setFixedWidth(60); self.p_edit.setAlignment(Qt.AlignCenter)
         row = self.lay.itemAt(1).layout()
         row.addSpacing(12); row.addWidget(QLabel("Columnas B:")); row.addWidget(self.p_edit)
+        # Escalares opcionales por matriz
+        row.addSpacing(18)
+        self.scalarA_chk = QCheckBox("kA");
+        self.scalarA_edit = QLineEdit("1"); self.scalarA_edit.setFixedWidth(70); self.scalarA_edit.setAlignment(Qt.AlignCenter)
+        row.addWidget(QLabel("Escalar A:")); row.addWidget(self.scalarA_chk); row.addWidget(self.scalarA_edit)
+        row.addSpacing(8)
+        self.scalarB_chk = QCheckBox("kB");
+        self.scalarB_edit = QLineEdit("1"); self.scalarB_edit.setFixedWidth(70); self.scalarB_edit.setAlignment(Qt.AlignCenter)
+        row.addWidget(QLabel("Escalar B:")); row.addWidget(self.scalarB_chk); row.addWidget(self.scalarB_edit)
         # Encadenar: botón para usar el último resultado como A
         self._last_result = None
         self._chain_btn = QPushButton("Usar resultado como A")
@@ -313,6 +322,33 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
         if ca != fb:
             QMessageBox.warning(self, "Aviso", "Las columnas de A deben coincidir con las filas de B.")
             return
+        # Escalado previo por matriz (si se solicita)
+        pasos_pre = []
+        As = [row[:] for row in A]; Bs = [row[:] for row in B]
+        try:
+            if self.scalarA_chk.isChecked():
+                kA = _parse_fraction(self.scalarA_edit.text())
+                if kA != 1:
+                    pasos_pre.append(f"Aplicando escalar kA = {kA} a Matriz A:")
+                    for i in range(fa):
+                        for j in range(ca):
+                            pasos_pre.append(f"a{i+1}{j+1} := {kA}*{As[i][j]} = {kA*As[i][j]}")
+                            As[i][j] = kA * As[i][j]
+        except Exception:
+            pass
+        try:
+            if self.scalarB_chk.isChecked():
+                kB = _parse_fraction(self.scalarB_edit.text())
+                if kB != 1:
+                    pasos_pre.append("")
+                    pasos_pre.append(f"Aplicando escalar kB = {kB} a Matriz B:")
+                    for i in range(fb):
+                        for j in range(cb):
+                            pasos_pre.append(f"b{i+1}{j+1} := {kB}*{Bs[i][j]} = {kB*Bs[i][j]}")
+                            Bs[i][j] = kB * Bs[i][j]
+        except Exception:
+            pass
+
         R = [[Fraction(0) for _ in range(cb)] for _ in range(fa)]
         pasos = []
         for i in range(fa):
@@ -320,11 +356,19 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
                 terms = []
                 s = Fraction(0)
                 for k in range(ca):
-                    a = A[i][k]; b = B[k][j]
+                    a = As[i][k]; b = Bs[k][j]
                     terms.append(f"{a}*{b}")
                     s += a * b
                 R[i][j] = s
                 pasos.append(f"c{i+1}{j+1} = " + " + ".join(terms) + f" = {s}")
+        # Precedencia: primero pasos de escalares (A y B), luego sección de multiplicación
+        pasos_total = []
+        if pasos_pre:
+            pasos_total.extend(["Pasos de escalado (antes de multiplicar):"]) 
+            pasos_total.extend(pasos_pre)
+            pasos_total.append("")
+        pasos_total.append("Multiplicación (c_ij):")
+        pasos_total.extend(pasos)
         def _fmt_mat(M):
             if not M: return []
             w = max(len(str(x)) for r in M for x in r)
@@ -346,7 +390,7 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
             self.result_box.insertPlainText(ln + "\n")
         self.result_box.insertPlainText("\n")
         self.result_box.insertPlainText("Procedimiento paso a paso:\n")
-        for line in pasos:
+        for line in pasos_total:
             self.result_box.insertPlainText(line + "\n")
         # Habilitar encadenado del resultado para nueva multiplicación
         self._last_result = R
