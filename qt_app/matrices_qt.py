@@ -448,7 +448,7 @@ class DeterminanteMatrizWindow(_BaseMatrixWindow):
 
     def _run(self):
         A = self._leer()
-        det, steps = determinante_con_pasos(A)
+        det, steps = determinante_con_pasos_ascii(A)
         self.result_box.clear()
         self.result_box.insertPlainText("Pasos detallados\n\n")
         for s in steps:
@@ -458,28 +458,33 @@ class DeterminanteMatrizWindow(_BaseMatrixWindow):
 
 # LÃ³gica de determinante con el mismo formato que Tk
 def determinante_con_pasos(matrix, level: int = 0):
+    # Wrapper hacia versión ASCII limpia
+    return determinante_con_pasos_ascii(matrix, level)
+
+def determinante_con_pasos_ascii(matrix, level: int = 0):
     n = len(matrix)
     indent = "    " * level
     steps = []
-    separator = indent + ("-" * 70)
+    sep = indent + ("-" * 70)
+
     def fmt(x: Fraction) -> str:
-        if isinstance(x, Fraction):
-            return str(x.numerator) if x.denominator == 1 else f"{x.numerator}/{x.denominator}"
-        return str(x)
-    def matrix_lines(M, ind=""):
+        return str(x.numerator) if isinstance(x, Fraction) and x.denominator == 1 else str(x)
+
+    def mat_lines(M, ind=""):
         return [ind + "[ " + "  ".join(fmt(c) for c in r) + " ]" for r in M]
+
     def is_upper(M):
-        n = len(M)
-        for i in range(1, n):
+        for i in range(1, len(M)):
             for j in range(0, i):
                 if M[i][j] != 0: return False
         return True
+
     def is_lower(M):
-        n = len(M)
-        for i in range(n):
-            for j in range(i+1, n):
+        for i in range(len(M)):
+            for j in range(i+1, len(M)):
                 if M[i][j] != 0: return False
         return True
+
     def minor(M, r, c):
         return [[M[i][j] for j in range(len(M)) if j != c] for i in range(len(M)) if i != r]
 
@@ -487,15 +492,16 @@ def determinante_con_pasos(matrix, level: int = 0):
         value = matrix[0][0]
         steps.append(f"{indent}Caso base 1x1: det(A) = {fmt(value)}")
         return value, steps
+
     if n == 2:
         a11, a12 = matrix[0]
         a21, a22 = matrix[1]
-        prod1 = a11 * a22
-        prod2 = a12 * a21
-        det = prod1 - prod2
+        p1 = a11*a22; p2 = a12*a21; det = p1-p2
         steps.append(f"{indent}Caso base 2x2:")
-        steps.extend(matrix_lines(matrix, indent + "    "))
-        steps.append(f"{indent}det(A) = ({fmt(a11)} Â· {fmt(a22)}) âˆ’ ({fmt(a12)} Â· {fmt(a21)}) = {fmt(prod1)} âˆ’ {fmt(prod2)} = {fmt(det)}")
+        steps.extend(mat_lines(matrix, indent+"    "))
+        steps.append(f"{indent}|A| = {fmt(a11)}*{fmt(a22)} - {fmt(a12)}*{fmt(a21)}")
+        steps.append(f"{indent}    = {fmt(p1)} - {fmt(p2)}")
+        steps.append(f"{indent}    = {fmt(det)}")
         return det, steps
 
     if is_upper(matrix) or is_lower(matrix):
@@ -503,44 +509,36 @@ def determinante_con_pasos(matrix, level: int = 0):
         diag = [matrix[i][i] for i in range(n)]
         det = Fraction(1)
         for v in diag: det *= v
-        diag_product = " Â· ".join(fmt(v) for v in diag)
         steps.append(f"{indent}La matriz es triangular {tipo}.")
-        steps.append(f"{indent}Producto de la diagonal principal: {diag_product} = {fmt(det)}")
+        steps.append(f"{indent}Producto de la diagonal principal: {' * '.join(fmt(v) for v in diag)} = {fmt(det)}")
         return det, steps
 
     steps.append(f"{indent}Expansion por cofactores a lo largo de la primera fila")
-    formula = " + ".join(f"aâ‚{j+1}Câ‚{j+1}" for j in range(n))
-    steps.append(f"{indent}det(A) = {formula}")
-
-    contributions = []
-    summary_values = []
+    steps.append(f"{indent}det(A) = " + " + ".join(f"a1{j+1}C1{j+1}" for j in range(n)))
+    contrib = []
     for j in range(n):
-        elemento = matrix[0][j]
-        sign = Fraction(1 if j % 2 == 0 else -1)
-        sign_symbol = "+" if sign >= 0 else "âˆ’"
-        steps.append(separator)
-        steps.append(f"{indent}Elemento aâ‚{j+1} = {fmt(elemento)} (signo {sign_symbol})")
-        if elemento == 0:
-            steps.append(f"{indent}Como aâ‚{j+1} = 0, su contribuciÃ³n es nula y se omite.")
-            contributions.append(Fraction(0)); summary_values.append(Fraction(0)); continue
-        sub = minor(matrix, 0, j)
-        steps.append(f"{indent}Submatriz Mâ‚{j+1} (eliminando fila 1 y columna {j+1}):")
-        steps.extend(matrix_lines(sub, indent + "    "))
-        sub_det, sub_steps = determinante_con_pasos(sub, level + 1)
-        steps.extend(sub_steps)
-        steps.append(f"{indent}det(Mâ‚{j+1}) = {fmt(sub_det)}")
-        cofactor_value = sign * sub_det
-        steps.append(f"{indent}Câ‚{j+1} = ({'+' if sign >= 0 else 'âˆ’'}{fmt(abs(sign))}) Â· {fmt(sub_det)} = {fmt(cofactor_value)}")
-        contrib = elemento * cofactor_value
-        steps.append(f"{indent}ContribuciÃ³n parcial: {fmt(elemento)} Â· {fmt(cofactor_value)} = {fmt(contrib)}")
-        contributions.append(contrib); summary_values.append(contrib)
-    steps.append(separator)
-    total = sum(contributions, Fraction(0))
-    partes = " + ".join((str(v) if isinstance(v, str) else fmt(v)) for v in summary_values)
-    steps.append(f"{indent}Suma total de contribuciones: det(A) = {partes} = {fmt(total)}")
+        a = matrix[0][j]
+        sgn = Fraction(1 if j%2==0 else -1)
+        steps.append(sep)
+        steps.append(f"{indent}Elemento a1{j+1} = {fmt(a)} (signo {'+' if sgn>0 else '-'})")
+        if a == 0:
+            steps.append(f"{indent}Como a1{j+1} = 0, su contribucion es nula y se omite.")
+            contrib.append(Fraction(0)); continue
+        sub = minor(matrix,0,j)
+        steps.append(f"{indent}Submatriz M1{j+1} (eliminando fila 1 y columna {j+1}):")
+        steps.extend(mat_lines(sub, indent+"    "))
+        sd, sd_steps = determinante_con_pasos_ascii(sub, level+1)
+        steps.extend(sd_steps)
+        steps.append(f"{indent}det(M1{j+1}) = {fmt(sd)}")
+        c = sgn*sd
+        steps.append(f"{indent}C1{j+1} = ({'+' if sgn>0 else '-'}1) * {fmt(sd)} = {fmt(c)}")
+        term = a*c
+        steps.append(f"{indent}Contribucion parcial: {fmt(a)} * {fmt(c)} = {fmt(term)}")
+        contrib.append(term)
+    steps.append(sep)
+    total = sum(contrib, Fraction(0))
+    steps.append(f"{indent}Suma total de contribuciones: det(A) = " + " + ".join(fmt(x) for x in contrib) + f" = {fmt(total)}")
     return total, steps
-
-
 class InversaMatrizWindow(_BaseMatrixWindow):
     def __init__(self, parent=None):
         super().__init__("Inversa de Matriz", parent)
@@ -813,7 +811,7 @@ class InversaMatrizWindow(_BaseMatrixWindow):
                 QMessageBox.information(self, "Info", "Adjunta solo disponible para n ≤ 3. Usando Gauss-Jordan.")
             else:
                 # Calcular determinante
-                det, det_steps = determinante_con_pasos(Aw)
+                det, det_steps = determinante_con_pasos_ascii(Aw)
 
                 # Helper para submatrices
                 def minor(M, r, c):
@@ -838,7 +836,7 @@ class InversaMatrizWindow(_BaseMatrixWindow):
                 first_row_contribs = []
                 for j in range(n):
                     sub = minor(Aw, 0, j)
-                    sub_det, _ = determinante_con_pasos(sub)
+                    sub_det, _ = determinante_con_pasos_ascii(sub)
                     sign = 1 if (j % 2 == 0) else -1
                     cofactor = Fraction(sign) * sub_det
 
@@ -909,12 +907,12 @@ class InversaMatrizWindow(_BaseMatrixWindow):
 
                 # Formato mejorado y legible del recuadro de pasos
                 # 1) Cálculo del determinante |A| por expansión por cofactores en la primera fila
-                self.result_box.insertPlainText("1) Cálculo del determinante |A|\n")
+                self.result_box.insertPlainText("1) Calculo del determinante |A|\n")
                 self.result_box.insertPlainText("Expansión por cofactores en la primera fila:\n\n")
                 # Listar M1j y C1j para j=1..n con espacios y saltos claros
                 for j in range(n):
                     sub = minor(Aw, 0, j)
-                    sub_det, sub_steps = determinante_con_pasos(sub)
+                    sub_det, sub_steps = determinante_con_pasos_ascii(sub)
                     sign = 1 if (j % 2 == 0) else -1
                     sub_fmt = format_submatrix(sub)
                     self.result_box.insertPlainText(f"M1{j+1} = det({sub_fmt}) = {sub_det}\n")
@@ -944,12 +942,11 @@ class InversaMatrizWindow(_BaseMatrixWindow):
                 for i in range(n):
                     for j in range(n):
                         sub = minor(Aw, i, j)
-                        sub_det, _ = determinante_con_pasos(sub)
+                        sub_det, _ = determinante_con_pasos_ascii(sub)
                         cij = cof[i][j]
                         sub_str = format_submatrix(sub)
                         # separar visualmente cada fila
                         self.result_box.insertPlainText(f"| C{i+1}{j+1} | {sub_str:<30} | {str(sub_det):>8} | {str(cij):>6} |\n")
-                self.result_box.insertPlainText(sep + "\n\n")
 
                 # 3) Matriz Adjunta
                 self.result_box.insertPlainText("3) Matriz Adjunta\n")

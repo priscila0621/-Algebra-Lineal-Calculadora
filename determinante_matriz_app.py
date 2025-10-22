@@ -11,14 +11,12 @@ _SUBSCRIPT_MAP = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
 
 
 def _fmt(value: Fraction) -> str:
+    # Formato ASCII para evitar símbolos raros en distintas codificaciones
     if isinstance(value, Fraction):
         if value.denominator == 1:
-            text = str(value.numerator)
-        else:
-            text = f"{value.numerator}/{value.denominator}"
-    else:
-        text = str(value)
-    return text.replace("-", "\u2212")
+            return str(value.numerator)
+        return f"{value.numerator}/{value.denominator}"
+    return str(value)
 
 
 def _fmt_ascii(value: Fraction) -> str:
@@ -444,6 +442,13 @@ class DeterminanteMatrizApp:
             lines.append("Calculo:")
             lines.append(f"    det(A) = {_fmt_ascii(valor)}")
             lines.append("")
+            # Comprobación por cofactores (fila 1)
+            lines.append("Comprobacion por cofactores (fila 1):")
+            lines.append(f"    det(A) = a11*C11 + a12*C12")
+            lines.append(f"    C11 = (+1)*det([{_fmt_ascii(a22)}]) = {_fmt_ascii(a22)}")
+            lines.append(f"    C12 = (-1)*det([{_fmt_ascii(a21)}]) = -{_fmt_ascii(a21)}")
+            lines.append(f"    a11*C11 + a12*C12 = {_fmt_ascii(a11)}*{_fmt_ascii(a22)} + {_fmt_ascii(a12)}*(-{_fmt_ascii(a21)}) = {_fmt_ascii(det_total)}")
+            lines.append("")
             lines.append(sep)
             lines.append(f"DETERMINANTE FINAL:  {_fmt_ascii(valor)}")
             lines.append(sep)
@@ -488,6 +493,50 @@ class DeterminanteMatrizApp:
             lines.append(f"DETERMINANTE FINAL:  {_fmt_ascii(det_total)}")
             lines.append(sep)
             return "\n".join(lines), det_total
+
+        # Estilo compacto para matrices n>=3 (como el ejemplo solicitado)
+        if n >= 3:
+            def _inline(m):
+                return "[ " + "; ".join(" ".join(_fmt_ascii(x) for x in row) for row in m) + " ]"
+            def _inline_bars(m):
+                inner = "; ".join(" ".join(_fmt_ascii(x) for x in row) for row in m)
+                return "| " + inner + " |"
+
+            terms_text = []
+            numeric_terms_text = []
+            contribs: List[Fraction] = []
+            bars_terms_text = []
+
+            for j in range(n):
+                a = matrix[0][j]
+                sub = _minor(matrix, 0, j)
+                sign = 1 if (j % 2 == 0) else -1
+                op = "" if j == 0 else (" + " if sign > 0 else " - ")
+
+                # Primera línea: a1j * det([submatriz])
+                terms_text.append(f"{op}{_fmt_ascii(a)}*det{_inline(sub)}")
+                bars_terms_text.append(f"{op}{_fmt_ascii(a)} {_inline_bars(sub)}")
+
+                # Determinante del menor: si es 2x2 mostramos (ad-bc), si es mayor usamos su valor
+                if len(sub) == 2:
+                    a11, a12 = sub[0]
+                    a21, a22 = sub[1]
+                    p1 = a11 * a22
+                    p2 = a12 * a21
+                    det_sub = p1 - p2
+                    numeric_terms_text.append(f"{op}{_fmt_ascii(a)}({_fmt_ascii(p1)} - {_fmt_ascii(p2)})")
+                else:
+                    det_sub, _ = determinante_con_pasos(sub)
+                    numeric_terms_text.append(f"{op}{_fmt_ascii(a)}({_fmt_ascii(det_sub)})")
+
+                contribs.append(Fraction(sign) * a * det_sub)
+
+            total = sum(contribs, Fraction(0))
+
+            lines.append("det(A) = " + "".join(terms_text))
+            lines.append("= " + "".join(numeric_terms_text) + f" = {_fmt_ascii(total)}")
+            lines.append("det(A) = " + "".join(bars_terms_text) + " = ... = " + _fmt_ascii(total))
+            return "\n".join(lines), total
 
         lines.append(sep)
         lines.append(" PROCEDIMIENTO DETALLADO: EXPANSION POR COFACTORES (FILA 1)")
