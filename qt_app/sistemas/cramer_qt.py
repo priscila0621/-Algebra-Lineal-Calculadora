@@ -19,6 +19,72 @@ def _fmt_fraction(x: Fraction) -> str:
         return str(x)
 
 
+
+class DetallesDeterminantesWindow(QMainWindow):
+    """Ventana que muestra los procedimientos de determinantes uno por uno con navegación."""
+    def __init__(self, parent=None, items=None):
+        super().__init__(parent)
+        self.setWindowTitle("Cálculos de determinantes")
+        self.items = items or []  # lista de (titulo, lineas[])
+        self.index = 0
+
+        outer = QWidget()
+        self.setCentralWidget(outer)
+        lay = QVBoxLayout(outer)
+        lay.setContentsMargins(12, 12, 12, 12)
+        lay.setSpacing(8)
+
+        self.header = QLabel("")
+        self.header.setAlignment(Qt.AlignCenter)
+        self.header.setStyleSheet("font-weight:700; font-size:14px;")
+        lay.addWidget(self.header)
+
+        self.text = QTextEdit()
+        self.text.setReadOnly(True)
+        self.text.setStyleSheet("font-family:Consolas,monospace;font-size:12px;")
+        lay.addWidget(self.text, 1)
+
+        btns = QHBoxLayout()
+        self.prev_btn = QPushButton("Anterior")
+        self.next_btn = QPushButton("Siguiente")
+        self.close_btn = QPushButton("Cerrar")
+        btns.addWidget(self.prev_btn)
+        btns.addWidget(self.next_btn)
+        btns.addStretch(1)
+        btns.addWidget(self.close_btn)
+        lay.addLayout(btns)
+
+        self.prev_btn.clicked.connect(self._prev)
+        self.next_btn.clicked.connect(self._next)
+        self.close_btn.clicked.connect(self.close)
+
+        self._update_view()
+
+    def _update_view(self):
+        if not self.items:
+            self.header.setText("No hay cálculos disponibles")
+            self.text.setPlainText("")
+            self.prev_btn.setEnabled(False)
+            self.next_btn.setEnabled(False)
+            return
+        title, lines = self.items[self.index]
+        self.header.setText(title)
+        self.text.setPlainText("\n".join(lines))
+        self.prev_btn.setEnabled(self.index > 0)
+        self.next_btn.setEnabled(self.index < len(self.items) - 1)
+
+    def _next(self):
+        if self.index < len(self.items) - 1:
+            self.index += 1
+            self._update_view()
+
+    def _prev(self):
+        if self.index > 0:
+            self.index -= 1
+            self._update_view()
+
+
+
 class CramerWindow(QMainWindow):
     """Interfaz para resolver sistemas por el método de Cramer.
 
@@ -111,7 +177,7 @@ class CramerWindow(QMainWindow):
 
         self.toggle_det_btn = QPushButton("Mostrar cálculos de determinantes")
         self.toggle_det_btn.setCheckable(True)
-        self.toggle_det_btn.clicked.connect(self._toggle_detalles)
+        self.toggle_det_btn.clicked.connect(self._open_detalles_window)
         main.addWidget(self.toggle_det_btn)
 
         self.detalles_container = QFrame()
@@ -195,9 +261,21 @@ class CramerWindow(QMainWindow):
         return A
 
     def _toggle_detalles(self):
-        visible = self.toggle_det_btn.isChecked()
-        self.detalles_container.setVisible(visible)
-        self.toggle_det_btn.setText("Ocultar cálculos de determinantes" if visible else "Mostrar cálculos de determinantes")
+        # kept for backward compatibility but not used; prefer popup
+        visible = self.detalles_container.isVisible()
+        self.detalles_container.setVisible(not visible)
+        self.toggle_det_btn.setText("Ocultar cálculos de determinantes" if not visible else "Mostrar cálculos de determinantes")
+
+    def _open_detalles_window(self):
+        # open a dedicated window with paginated determinante steps
+        items = getattr(self, "_det_steps_items", None)
+        if not items:
+            QMessageBox.information(self, "Sin cálculos", "Primero resuelve el sistema para generar los cálculos de determinantes.")
+            return
+        w = DetallesDeterminantesWindow(parent=self, items=items)
+        w.resize(820, 620)
+        w.show()
+        self._detalles_window = w
 
     def _resolver(self):
         try:
@@ -237,6 +315,15 @@ class CramerWindow(QMainWindow):
             detk, pasosk = determinante_con_pasos_ascii(M)
             det_vars.append(detk)
             det_steps[f"det_var_{col+1}"] = pasosk
+
+        # preparar items paginados para la ventana de detalles: lista de (titulo, lineas)
+        self._det_steps_items = []
+        # primer item: det(A)
+        self._det_steps_items.append(("|A| — determinante general", pasosA))
+        for idx in range(n):
+            key = f"det_var_{idx+1}"
+            lines = det_steps.get(key, [])
+            self._det_steps_items.append((f"|A{idx+1}| — determinante sustituyendo columna {idx+1}", lines))
 
         # preparar y mostrar resultados
         self.vars_box.clear()
