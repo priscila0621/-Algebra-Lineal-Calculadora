@@ -3,7 +3,7 @@
 )
 from PySide6.QtCore import Qt
 from .menu_matrices_qt import MenuMatricesWindow
-from .sistemas.gauss_jordan_qt import GaussJordanWindow
+from .menu_sistemas_qt import MenuSistemasWindow
 from .independencia_qt import IndependenciaWindow
 from .transformaciones_qt import TransformacionesWindow
 from .theme import make_theme_toggle_button, install_toggle_shortcut
@@ -77,8 +77,8 @@ class MenuPrincipalWindow(QMainWindow):
         install_toggle_shortcut(self)
 
     def _open_sistemas(self):
-        self.w = GaussJordanWindow(parent=self)
-        self.w.showMaximized()
+        self.s = MenuSistemasWindow(parent=self)
+        self.s.showMaximized()
 
     def _open_matrices(self):
         self.m = MenuMatricesWindow(parent=self)
