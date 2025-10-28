@@ -2,10 +2,12 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
     QScrollArea, QGridLayout, QLineEdit, QTextEdit, QMessageBox
 )
+from PySide6.QtWidgets import QDialog, QDialogButtonBox, QPlainTextEdit
 from PySide6.QtCore import Qt
 from ..theme import make_theme_toggle_button, install_toggle_shortcut
 from fractions import Fraction
 from qt_app.matrices_qt import determinante_con_pasos as determinante_con_pasos_ascii
+import re
 
 
 def _fmt_fraction(x: Fraction) -> str:
@@ -132,6 +134,10 @@ class CramerWindow(QMainWindow):
         self.btn_limpiar = QPushButton("Limpiar pantalla")
         self.btn_limpiar.clicked.connect(self._limpiar)
         top.addWidget(self.btn_limpiar)
+        # nueva opción: ingreso por ecuaciones (texto)
+        self.btn_ingresar_ecuaciones = QPushButton("Ingresar ecuaciones")
+        self.btn_ingresar_ecuaciones.clicked.connect(self._open_ecuaciones_dialog)
+        top.addWidget(self.btn_ingresar_ecuaciones)
         top.addStretch(1)
 
         self.scroll = QScrollArea()
@@ -247,6 +253,126 @@ class CramerWindow(QMainWindow):
     def _change_cols(self, delta: int):
         self._cols_no_b = max(1, self._cols_no_b + delta)
         self._rebuild_grid(self._rows, self._cols_no_b + 1)
+
+    # --- ingreso por ecuaciones (nuevo) ---
+    def _open_ecuaciones_dialog(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Ingresar ecuaciones")
+        lay = QVBoxLayout(dlg)
+        info = QLabel("Ingrese una ecuación por línea. Ejemplo: 2x + 3y = 5\nUse variables como x, y, z o x1, x2...")
+        info.setWordWrap(True)
+        lay.addWidget(info)
+        editor = QPlainTextEdit()
+        editor.setPlaceholderText("Ej:\n2x + 3y = 5\n-x + 4y = 1")
+        lay.addWidget(editor, 1)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        lay.addWidget(buttons)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        text = editor.toPlainText().strip()
+        if not text:
+            QMessageBox.information(self, "Vacío", "No ingresaste ecuaciones.")
+            return
+        try:
+            M = self._parse_equations_text(text, self._cols_no_b)
+        except Exception as exc:
+            QMessageBox.critical(self, "Error de parseo", f"No se pudieron interpretar las ecuaciones: {exc}")
+            return
+        filas = len(M)
+        columnas = len(M[0]) if filas else 0
+        if filas == 0:
+            QMessageBox.warning(self, "Error", "No se detectaron ecuaciones válidas.")
+            return
+        self._rows = filas
+        self._cols_no_b = columnas - 1
+        self._rebuild_grid(self._rows, self._cols_no_b + 1)
+        for i in range(filas):
+            for j in range(columnas):
+                self._entries[i][j].setText(str(M[i][j]))
+
+    def _parse_equations_text(self, text: str, num_vars_expected: int):
+        import fractions as _fra
+        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+        if not lines:
+            raise ValueError("No hay líneas.")
+        var_names = []
+        var_indexed = False
+        term_re = re.compile(r'([+-]?\s*(?:\d+(?:/\d+)?|\d*\.\d+)?)([a-zA-Z]\w*)')
+        const_re = re.compile(r'([+-]?\s*(?:\d+(?:/\d+)?|\d*\.\d+))')
+        parsed = []
+        for ln in lines:
+            if '=' not in ln:
+                raise ValueError(f"Falta '=' en la línea: {ln}")
+            left, right = ln.split('=', 1)
+            left = left.strip(); right = right.strip()
+            terms = term_re.findall(left)
+            vars_in_line = [v for (_coef, v) in terms]
+            if any(re.match(r'^[a-zA-Z]+\d+$', v) for v in vars_in_line):
+                var_indexed = True
+            for v in vars_in_line:
+                if v not in var_names:
+                    var_names.append(v)
+            parsed.append((left, right))
+        if var_indexed:
+            mapping = {}
+            for name in var_names:
+                m = re.match(r'^([a-zA-Z]+)(\d+)$', name)
+                if m:
+                    idx = int(m.group(2)) - 1
+                    mapping[name] = idx
+            for i in range(num_vars_expected):
+                key = f'x{i+1}'
+                if key not in mapping:
+                    mapping[key] = i
+        else:
+            encountered = []
+            for ln in lines:
+                for m in term_re.finditer(ln.split('=')[0]):
+                    name = m.group(2)
+                    if name not in encountered:
+                        encountered.append(name)
+            if len(encountered) < num_vars_expected:
+                for i in range(num_vars_expected):
+                    key = f'x{i+1}'
+                    if key not in encountered:
+                        encountered.append(key)
+            mapping = {name: idx for idx, name in enumerate(encountered[:num_vars_expected])}
+        M = []
+        for left, right in parsed:
+            coeffs = [ _fra.Fraction(0) for _ in range(num_vars_expected) ]
+            for m in term_re.finditer(left):
+                raw_coef = m.group(1).replace(' ', '')
+                var = m.group(2)
+                if raw_coef in ('', '+'):
+                    coef = _fra.Fraction(1)
+                elif raw_coef == '-':
+                    coef = _fra.Fraction(-1)
+                else:
+                    coef = _fra.Fraction(raw_coef)
+                idx = mapping.get(var, None)
+                if idx is None or idx < 0 or idx >= num_vars_expected:
+                    raise ValueError(f"Variable inesperada '{var}' en la ecuación: {left}={right}")
+                coeffs[idx] += coef
+            left_consts = 0
+            cleaned = term_re.sub(' ', left)
+            for m in const_re.finditer(cleaned):
+                s = m.group(1).replace(' ', '')
+                try:
+                    left_consts += _fra.Fraction(s)
+                except Exception:
+                    pass
+            try:
+                rhs = _fra.Fraction(right.replace(',', '.'))
+            except Exception:
+                raise ValueError(f"Constante derecha inválida: '{right}'")
+            rhs = rhs - left_consts
+            row = coeffs + [rhs]
+            M.append(row)
+        if len(M) != num_vars_expected:
+            raise ValueError(f"Se esperaban {num_vars_expected} ecuaciones (filas) según la dimensión, pero se han dado {len(M)}.")
+        return M
 
     def _leer_matriz(self):
         if not self._entries:
