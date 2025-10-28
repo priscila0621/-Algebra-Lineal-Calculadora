@@ -28,8 +28,11 @@ class MenuSistemasWindow(QMainWindow):
         nav_lay.setContentsMargins(18, 12, 18, 12)
         nav_lay.setSpacing(12)
 
-        btn_back = QPushButton("Volver")
-        btn_back.setMinimumHeight(36)
+        btn_back = QPushButton("\u2190")
+        btn_back.setObjectName("BackButton")
+        btn_back.setFixedSize(42, 42)
+        btn_back.setToolTip("Volver")
+        btn_back.setCursor(Qt.PointingHandCursor)
         btn_back.clicked.connect(self._go_back)
         nav_lay.addWidget(btn_back)
 
@@ -46,7 +49,7 @@ class MenuSistemasWindow(QMainWindow):
         nav_lay.addWidget(btn_cramer)
 
         nav_lay.addStretch(1)
-        nav_lay.addWidget(make_theme_toggle_button(self))
+        nav_lay.addWidget(make_theme_toggle_button(self), 0, Qt.AlignVCenter)
         outer_lay.addWidget(nav)
 
         card = QFrame()
@@ -102,3 +105,5 @@ class MenuSistemasWindow(QMainWindow):
         w = CramerWindow(parent=self)
         w.showMaximized()
         self._child = w
+
+

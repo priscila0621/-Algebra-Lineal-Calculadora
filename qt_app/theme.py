@@ -1,7 +1,23 @@
-from PySide6.QtWidgets import QApplication, QPushButton
-from PySide6.QtGui import QPalette, QColor, QFont, QKeySequence
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QShortcut
+from PySide6.QtWidgets import QApplication, QCheckBox
+from PySide6.QtGui import (
+    QPalette,
+    QColor,
+    QFont,
+    QKeySequence,
+    QShortcut,
+    QPainter,
+    QPen,
+    QBrush,
+)
+from PySide6.QtCore import (
+    Qt,
+    QPropertyAnimation,
+    QEasingCurve,
+    Property,
+    QRectF,
+    QPointF,
+    QAbstractAnimation,
+)
 
 
 def apply_theme(app: QApplication, mode: str = "light") -> None:
@@ -52,6 +68,19 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
             QPushButton:hover { background: #9A5D73; }
             QPushButton:pressed { background: #834C63; }
             QPushButton:disabled { background: #3A3542; color: #8F8697; }
+            QPushButton#BackButton {
+                min-height: 42px;
+                min-width: 42px;
+                max-height: 42px;
+                max-width: 42px;
+                border-radius: 12px;
+                background: #B07A8C;
+                color: #FFFFFF;
+                font-size: 20px;
+                font-weight: 700;
+            }
+            QPushButton#BackButton:hover { background: #9A5D73; }
+            QPushButton#BackButton:pressed { background: #834C63; }
             QLineEdit, QSpinBox, QTextEdit, QPlainTextEdit, QComboBox {
                 border: 1px solid #3A3542;
                 border-radius: 8px;
@@ -78,20 +107,14 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
                 border: 1px solid #3A3542;
                 border-radius: 18px;
             }
-            QFrame#Card QLabel {
-                background: transparent;
-            }
-            QFrame#NavPanel QLabel {
-                background: transparent;
-            }
+            QFrame#Card QLabel { background: transparent; }
+            QFrame#NavPanel QLabel { background: transparent; }
             QFrame#TopNav {
                 background: #15131A;
                 border: 1px solid #3A3542;
                 border-radius: 12px;
             }
-            QFrame#TopNav QPushButton {
-                min-width: 120px;
-            }
+            QFrame#TopNav QPushButton { min-width: 120px; }
             QTabBar::tab {
                 background: #1F1D22;
                 color: #F7F4F1;
@@ -147,6 +170,19 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
             QPushButton:hover { background: #9A5D73; }
             QPushButton:pressed { background: #834C63; }
             QPushButton:disabled { background: #E5D9D7; color: #BBA9AE; }
+            QPushButton#BackButton {
+                min-height: 42px;
+                min-width: 42px;
+                max-height: 42px;
+                max-width: 42px;
+                border-radius: 12px;
+                background: #B07A8C;
+                color: #FFFFFF;
+                font-size: 20px;
+                font-weight: 700;
+            }
+            QPushButton#BackButton:hover { background: #9A5D73; }
+            QPushButton#BackButton:pressed { background: #834C63; }
             QLineEdit, QSpinBox, QTextEdit, QPlainTextEdit, QComboBox {
                 border: 1px solid #D9C8C5;
                 border-radius: 8px;
@@ -186,20 +222,14 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
                 border: 1px solid #D9C8C5;
                 border-radius: 18px;
             }
-            QFrame#Card QLabel {
-                background: transparent;
-            }
-            QFrame#NavPanel QLabel {
-                background: transparent;
-            }
+            QFrame#Card QLabel { background: transparent; }
+            QFrame#NavPanel QLabel { background: transparent; }
             QFrame#TopNav {
                 background: #F1E6E4;
                 border: 1px solid #D9C8C5;
                 border-radius: 12px;
             }
-            QFrame#TopNav QPushButton {
-                min-width: 120px;
-            }
+            QFrame#TopNav QPushButton { min-width: 120px; }
             """
         )
 
@@ -213,27 +243,133 @@ def toggle_theme(app: QApplication) -> None:
     apply_theme(app, "dark" if mode == "light" else "light")
 
 
-def make_theme_toggle_button(parent_widget) -> QPushButton:
-    """Crea un botón que alterna claro/oscuro y actualiza su etiqueta."""
-    from PySide6.QtWidgets import QApplication
-    app = QApplication.instance()
-    btn = QPushButton()
+class ThemeSwitch(QCheckBox):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setText("")
+        self.setObjectName("ThemeSwitch")
+        self.setFixedSize(120, 44)
+        self._offset = 1.0 if self.isChecked() else 0.0
+        self._anim = QPropertyAnimation(self, b"offset", self)
+        self._anim.setDuration(220)
+        self._anim.setEasingCurve(QEasingCurve.InOutQuad)
+        self._anim.finished.connect(self._snap_offset)
 
-    def _update_text():
-        btn.setText("Modo oscuro" if current_mode(app) == "light" else "Modo claro")
+    def sizeHint(self):
+        return self.size()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        track_rect = QRectF(8, 10, self.width() - 16, self.height() - 20)
+        radius = track_rect.height() / 2
+
+        app = QApplication.instance()
+        mode = current_mode(app)
+
+        if mode == "dark":
+            track_off = QColor("#3A3542")
+            track_on = QColor("#B07A8C")
+            thumb_shadow = QColor(0, 0, 0, 60)
+            icon_color = QColor("#F7F4F1")
+        else:
+            track_off = QColor("#D9C8C5")
+            track_on = QColor("#B07A8C")
+            thumb_shadow = QColor(0, 0, 0, 40)
+            icon_color = QColor("#6E4B5E")
+
+        track_color = track_on if self._offset >= 0.5 else track_off
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(track_color)
+        painter.drawRoundedRect(track_rect, radius, radius)
+
+        # Etiqueta sobre la pista
+        painter.save()
+        painter.setPen(icon_color if mode == "dark" else QColor("#6E4B5E"))
+        font = painter.font()
+        font.setPointSize(11)
+        font.setWeight(QFont.DemiBold)
+        painter.setFont(font)
+        painter.setOpacity(0.6 if mode == "light" else 0.45)
+        text_rect = QRectF(
+            track_rect.left() + 10,
+            track_rect.top(),
+            track_rect.width() - 20,
+            track_rect.height(),
+        )
+        painter.drawText(text_rect, Qt.AlignCenter, "Tema")
+        painter.restore()
+
+        # Knob
+        knob_d = track_rect.height() - 6
+        x = track_rect.left() + 3 + (track_rect.width() - knob_d) * self._offset
+        knob_rect = QRectF(x, track_rect.top() + 3, knob_d, knob_d)
+        painter.setBrush(QBrush(QColor("#FFFFFF")))
+        painter.setPen(QPen(thumb_shadow, 1))
+        painter.drawEllipse(knob_rect)
+
+    def nextCheckState(self):
+        start = self._offset
+        end = 0.0 if self.isChecked() else 1.0
+        self._anim.stop()
+        self._anim.setStartValue(start)
+        self._anim.setEndValue(end)
+        self._anim.start()
+        super().nextCheckState()
+
+    def _snap_offset(self):
+        self.setOffset(1.0 if self.isChecked() else 0.0)
+
+    def getOffset(self) -> float:
+        return self._offset
+
+    def setOffset(self, value: float) -> None:
+        self._offset = max(0.0, min(1.0, float(value)))
+        self.update()
+
+    offset = Property(float, getOffset, setOffset)
+
+    def setChecked(self, checked: bool) -> None:
+        super().setChecked(checked)
+        self.setOffset(1.0 if checked else 0.0)
+
+def make_theme_toggle_button(parent_widget) -> QCheckBox:
+    """Crea un switch que alterna claro/oscuro y actualiza su estado."""
+    app = QApplication.instance()
+    switch = ThemeSwitch(parent_widget)
+    switch.setToolTip("Alternar entre modo claro y modo oscuro")
+    switch.setChecked(current_mode(app) == "dark")
+
+    def _sync_state():
+        switch.blockSignals(True)
+        desired = current_mode(app) == "dark"
+        if switch.isChecked() != desired:
+            switch.setChecked(desired)
+        elif switch._anim.state() != QAbstractAnimation.Running:
+            switch.setOffset(1.0 if desired else 0.0)
+        switch.blockSignals(False)
 
     def _toggle():
         toggle_theme(app)
-        _update_text()
+        _sync_state()
 
-    _update_text()
-    btn.clicked.connect(_toggle)
-    return btn
+    switch.toggled.connect(lambda _checked: _toggle())
+    _sync_state()
+    return switch
 
 
 def install_toggle_shortcut(window) -> None:
     """Instala Ctrl+D para alternar tema en la ventana dada."""
-    from PySide6.QtWidgets import QApplication
     app = QApplication.instance()
     sc = QShortcut(QKeySequence("Ctrl+D"), window)
-    sc.activated.connect(lambda: toggle_theme(app))
+
+    def _activate():
+        toggle_theme(app)
+        for sw in window.findChildren(ThemeSwitch):
+            sw.blockSignals(True)
+            sw.setChecked(current_mode(app) == "dark")
+            sw.blockSignals(False)
+
+    sc.activated.connect(_activate)

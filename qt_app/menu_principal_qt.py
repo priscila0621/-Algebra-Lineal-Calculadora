@@ -89,7 +89,7 @@ class MenuPrincipalWindow(QMainWindow):
         top_bar.addStretch(1)
         toggle = make_theme_toggle_button(self)
         toggle.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        top_bar.addWidget(toggle)
+        top_bar.addWidget(toggle, 0, Qt.AlignVCenter)
         content_lay.addLayout(top_bar)
 
         hero = QHBoxLayout()

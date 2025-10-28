@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QFrame,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from .theme import make_theme_toggle_button, install_toggle_shortcut
 
 
@@ -29,8 +29,12 @@ class MenuMatricesWindow(QMainWindow):
         nav_lay.setContentsMargins(18, 12, 18, 12)
         nav_lay.setSpacing(12)
 
-        btn_back = QPushButton("Volver")
-        btn_back.setMinimumHeight(36)
+        btn_back = QPushButton("\u2190")
+        btn_back.setObjectName("BackButton")
+        btn_back.setIconSize(QSize(24, 24))
+        btn_back.setFixedSize(42, 42)
+        btn_back.setToolTip("Volver")
+        btn_back.setCursor(Qt.PointingHandCursor)
         btn_back.clicked.connect(self._go_back)
         nav_lay.addWidget(btn_back)
 
@@ -67,7 +71,7 @@ class MenuMatricesWindow(QMainWindow):
         nav_lay.addWidget(btn_inv)
 
         nav_lay.addStretch(1)
-        nav_lay.addWidget(make_theme_toggle_button(self))
+        nav_lay.addWidget(make_theme_toggle_button(self), 0, Qt.AlignVCenter)
         outer_lay.addWidget(nav)
 
         # Contenido informativo
@@ -150,3 +154,4 @@ class MenuMatricesWindow(QMainWindow):
         w = InversaMatrizWindow(parent=self)
         w.showMaximized()
         self._child = w
+
