@@ -68,7 +68,7 @@ class MenuPrincipalWindow(QMainWindow):
         nav_lay.addStretch(1)
 
         about = QLabel(
-            "© 2024 · Priscila Selva · Emma Serrano · Jeyni Orozco\n"
+            "© 2025 · Priscila Selva · Emma Serrano · Jeyni Orozco\n"
             "Todos los derechos reservados."
         )
         about.setWordWrap(True)
@@ -143,15 +143,17 @@ class MenuPrincipalWindow(QMainWindow):
 
         info_title = QLabel("Acerca de la plataforma")
         info_title.setObjectName("Subtitle")
+        info_title.setStyleSheet("text-decoration: none;")
         content_lay.addWidget(info_title)
 
         info_body = QLabel(
             "Nexus Linear nace para centralizar las operaciones más demandadas en álgebra lineal. "
             "Desde la resolución de sistemas y la manipulación de matrices hasta el análisis de transformaciones, "
-            "cada módulo ofrece una experiencia guiada con interfaces claras, resultados instantáneos y explicación pedagógica. "
-            "El diseño Ivory Chic refuerza una estética sobria y moderna, ideal para entornos académicos y profesionales."
+            "cada módulo ofrece una experiencia guiada con resultados instantáneos, trazabilidad completa y explicación pedagógica, "
+            "lo que la convierte en una aliada estratégica para entornos académicos y profesionales."
         )
         info_body.setWordWrap(True)
+        info_body.setStyleSheet("text-decoration: none;")
         content_lay.addWidget(info_body)
 
         content_lay.addStretch(1)

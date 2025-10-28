@@ -78,6 +78,12 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
                 border: 1px solid #3A3542;
                 border-radius: 18px;
             }
+            QFrame#Card QLabel {
+                background: transparent;
+            }
+            QFrame#NavPanel QLabel {
+                background: transparent;
+            }
             QFrame#TopNav {
                 background: #15131A;
                 border: 1px solid #3A3542;
@@ -179,6 +185,12 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
                 background: #F1E6E4;
                 border: 1px solid #D9C8C5;
                 border-radius: 18px;
+            }
+            QFrame#Card QLabel {
+                background: transparent;
+            }
+            QFrame#NavPanel QLabel {
+                background: transparent;
             }
             QFrame#TopNav {
                 background: #F1E6E4;
