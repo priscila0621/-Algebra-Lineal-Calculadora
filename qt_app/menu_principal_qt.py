@@ -1,5 +1,12 @@
-﻿from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFrame
+from PySide6.QtWidgets import (
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QFrame,
+    QSizePolicy,
 )
 from PySide6.QtCore import Qt
 from .menu_matrices_qt import MenuMatricesWindow
@@ -12,68 +19,144 @@ from .theme import make_theme_toggle_button, install_toggle_shortcut
 class MenuPrincipalWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Calculadora \u00C1lgebra Lineal")
+        self.setWindowTitle("Calculadora Álgebra Lineal")
 
-        outer = QWidget()
-        self.setCentralWidget(outer)
-        outer_lay = QVBoxLayout(outer)
-        outer_lay.setContentsMargins(24, 24, 24, 24)
-        outer_lay.setSpacing(18)
+        root = QWidget()
+        self.setCentralWidget(root)
+        base = QHBoxLayout(root)
+        base.setContentsMargins(24, 24, 24, 24)
+        base.setSpacing(24)
 
-        # Contenedor centrado de ancho controlado + barra de acciones (tema)
-        center_row = QHBoxLayout()
-        outer_lay.addLayout(center_row)
-        center_row.addStretch(1)
+        # Navegación lateral
+        nav = QFrame()
+        nav.setObjectName("NavPanel")
+        nav.setFixedWidth(260)
+        nav_lay = QVBoxLayout(nav)
+        nav_lay.setContentsMargins(24, 24, 24, 24)
+        nav_lay.setSpacing(18)
 
-        container = QFrame()
-        container.setObjectName("Card")
-        container.setMaximumWidth(1000)
-        center_row.addWidget(container, 1)
-        center_row.addStretch(1)
+        nav_title = QLabel("Menú principal")
+        nav_title.setObjectName("Title")
+        nav_title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        nav_lay.addWidget(nav_title)
 
-        lay = QVBoxLayout(container)
-        lay.setContentsMargins(28, 28, 28, 28)
-        lay.setSpacing(16)
+        nav_sub = QLabel("Explora cada módulo especializado.")
+        nav_sub.setObjectName("Subtitle")
+        nav_sub.setWordWrap(True)
+        nav_lay.addWidget(nav_sub)
 
-        title = QLabel("Calculadora \u00C1lgebra Lineal")
-        title.setObjectName("Title")
-        title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        lay.addWidget(title)
+        self.btn_sistemas = QPushButton("Sistemas de ecuaciones")
+        self.btn_sistemas.setMinimumHeight(44)
+        self.btn_sistemas.clicked.connect(self._open_sistemas)
+        nav_lay.addWidget(self.btn_sistemas)
 
-        subtitle = QLabel("Herramientas de \u00E1lgebra lineal: sistemas, matrices y m\u00E1s.")
-        subtitle.setObjectName("Subtitle")
-        lay.addWidget(subtitle)
+        self.btn_matrices = QPushButton("Operaciones con matrices")
+        self.btn_matrices.setMinimumHeight(44)
+        self.btn_matrices.clicked.connect(self._open_matrices)
+        nav_lay.addWidget(self.btn_matrices)
 
-        # Toggle de tema a la derecha
-        actions = QHBoxLayout()
-        actions.addStretch(1)
-        actions.addWidget(make_theme_toggle_button(self))
-        lay.addLayout(actions)
+        self.btn_independencia = QPushButton("Independencia de vectores")
+        self.btn_independencia.setMinimumHeight(44)
+        self.btn_independencia.clicked.connect(self._open_independencia)
+        nav_lay.addWidget(self.btn_independencia)
 
-        # Grupo de acciones
-        btn1 = QPushButton("Resolver sistema de ecuaciones lineales")
-        btn1.setMinimumHeight(44)
-        btn1.clicked.connect(self._open_sistemas)
-        lay.addWidget(btn1)
+        self.btn_transformaciones = QPushButton("Transformaciones lineales")
+        self.btn_transformaciones.setMinimumHeight(44)
+        self.btn_transformaciones.clicked.connect(self._open_transformaciones)
+        nav_lay.addWidget(self.btn_transformaciones)
 
-        btn2 = QPushButton("Operaciones con matrices")
-        btn2.setMinimumHeight(44)
-        btn2.clicked.connect(self._open_matrices)
-        lay.addWidget(btn2)
+        nav_lay.addStretch(1)
 
-        btn3 = QPushButton("Independencia lineal de vectores")
-        btn3.setMinimumHeight(44)
-        btn3.clicked.connect(self._open_independencia)
-        lay.addWidget(btn3)
+        about = QLabel(
+            "© 2024 · Priscila Selva · Emma Serrano · Jeyni Orozco\n"
+            "Todos los derechos reservados."
+        )
+        about.setWordWrap(True)
+        about.setAlignment(Qt.AlignLeft | Qt.AlignBottom)
+        about.setObjectName("Subtitle")
+        nav_lay.addWidget(about)
 
-        btn4 = QPushButton("Transformaciones lineales (T(x)=Ax)")
-        btn4.setMinimumHeight(44)
-        btn4.clicked.connect(self._open_transformaciones)
-        lay.addWidget(btn4)
+        base.addWidget(nav)
 
-        lay.addStretch(1)
+        # Panel principal con información
+        content = QFrame()
+        content.setObjectName("Card")
+        content_lay = QVBoxLayout(content)
+        content_lay.setContentsMargins(32, 32, 32, 32)
+        content_lay.setSpacing(20)
 
-        # Atajo Ctrl+D
+        top_bar = QHBoxLayout()
+        top_bar.addStretch(1)
+        toggle = make_theme_toggle_button(self)
+        toggle.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        top_bar.addWidget(toggle)
+        content_lay.addLayout(top_bar)
+
+        hero = QHBoxLayout()
+        hero.setSpacing(24)
+
+        logo = QLabel("NL")
+        logo.setAlignment(Qt.AlignCenter)
+        logo.setFixedSize(96, 96)
+        logo.setStyleSheet(
+            """
+            QLabel {
+                background-color: #B07A8C;
+                color: #FFFFFF;
+                border-radius: 48px;
+                font-size: 36px;
+                font-weight: 700;
+                letter-spacing: 4px;
+            }
+            """
+        )
+        hero.addWidget(logo, 0, Qt.AlignTop)
+
+        title_box = QVBoxLayout()
+        heading = QLabel("Nexus Linear · Calculadora Inteligente")
+        heading.setObjectName("Title")
+        title_box.addWidget(heading)
+
+        strapline = QLabel(
+            "Una suite profesional para explorar, resolver y visualizar problemas de álgebra lineal. "
+            "Integramos herramientas interactivas para docentes, estudiantes y profesionales."
+        )
+        strapline.setObjectName("Subtitle")
+        strapline.setWordWrap(True)
+        title_box.addWidget(strapline)
+
+        title_box.addSpacing(8)
+
+        highlights = QLabel(
+            "· Automatiza cálculos complejos con precisión fraccional.\n"
+            "· Documenta cada procedimiento con trazabilidad paso a paso.\n"
+            "· Diseñada para la Universidad de Tecnología: innovación aplicada."
+        )
+        highlights.setWordWrap(True)
+        highlights.setAlignment(Qt.AlignLeft)
+        title_box.addWidget(highlights)
+
+        hero.addLayout(title_box, 1)
+        content_lay.addLayout(hero)
+
+        content_lay.addSpacing(12)
+
+        info_title = QLabel("Acerca de la plataforma")
+        info_title.setObjectName("Subtitle")
+        content_lay.addWidget(info_title)
+
+        info_body = QLabel(
+            "Nexus Linear nace para centralizar las operaciones más demandadas en álgebra lineal. "
+            "Desde la resolución de sistemas y la manipulación de matrices hasta el análisis de transformaciones, "
+            "cada módulo ofrece una experiencia guiada con interfaces claras, resultados instantáneos y explicación pedagógica. "
+            "El diseño Ivory Chic refuerza una estética sobria y moderna, ideal para entornos académicos y profesionales."
+        )
+        info_body.setWordWrap(True)
+        content_lay.addWidget(info_body)
+
+        content_lay.addStretch(1)
+        base.addWidget(content, 1)
+
         install_toggle_shortcut(self)
 
     def _open_sistemas(self):
@@ -91,7 +174,3 @@ class MenuPrincipalWindow(QMainWindow):
     def _open_transformaciones(self):
         self.w = TransformacionesWindow(parent=self)
         self.w.showMaximized()
-
-
-
-

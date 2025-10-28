@@ -1,5 +1,11 @@
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFrame
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QFrame,
 )
 from PySide6.QtCore import Qt
 from .theme import make_theme_toggle_button, install_toggle_shortcut
@@ -16,46 +22,60 @@ class MenuSistemasWindow(QMainWindow):
         outer_lay.setContentsMargins(24, 24, 24, 24)
         outer_lay.setSpacing(18)
 
-        row = QHBoxLayout()
-        outer_lay.addLayout(row)
-        row.addStretch(1)
+        nav = QFrame()
+        nav.setObjectName("TopNav")
+        nav_lay = QHBoxLayout(nav)
+        nav_lay.setContentsMargins(18, 12, 18, 12)
+        nav_lay.setSpacing(12)
+
+        btn_back = QPushButton("Volver")
+        btn_back.setMinimumHeight(36)
+        btn_back.clicked.connect(self._go_back)
+        nav_lay.addWidget(btn_back)
+
+        nav_lay.addSpacing(6)
+
+        btn_gauss = QPushButton("Gauss-Jordan")
+        btn_gauss.setMinimumHeight(36)
+        btn_gauss.clicked.connect(self._open_gauss)
+        nav_lay.addWidget(btn_gauss)
+
+        btn_cramer = QPushButton("Método de Cramer")
+        btn_cramer.setMinimumHeight(36)
+        btn_cramer.clicked.connect(self._open_cramer)
+        nav_lay.addWidget(btn_cramer)
+
+        nav_lay.addStretch(1)
+        nav_lay.addWidget(make_theme_toggle_button(self))
+        outer_lay.addWidget(nav)
+
         card = QFrame()
         card.setObjectName("Card")
-        card.setMaximumWidth(1000)
-        row.addWidget(card, 1)
-        row.addStretch(1)
-
-        lay = QVBoxLayout(card)
-        lay.setContentsMargins(28, 28, 28, 28)
-        lay.setSpacing(16)
+        card_lay = QVBoxLayout(card)
+        card_lay.setContentsMargins(32, 28, 32, 28)
+        card_lay.setSpacing(16)
 
         title = QLabel("Resolver sistemas de ecuaciones lineales")
         title.setObjectName("Title")
-        lay.addWidget(title)
+        card_lay.addWidget(title)
 
-        subtitle = QLabel("Elige el método que deseas utilizar.")
+        subtitle = QLabel(
+            "Selecciona un método desde la barra superior para iniciar la resolución. "
+            "Cada módulo muestra los pasos algorítmicos y permite exportar resultados limpios."
+        )
         subtitle.setObjectName("Subtitle")
-        lay.addWidget(subtitle)
+        subtitle.setWordWrap(True)
+        card_lay.addWidget(subtitle)
 
-        actions = QHBoxLayout()
-        btn_back = QPushButton("Volver")
-        btn_back.clicked.connect(self._go_back)
-        actions.addWidget(btn_back)
-        actions.addStretch(1)
-        actions.addWidget(make_theme_toggle_button(self))
-        lay.addLayout(actions)
+        insights = QLabel(
+            "• Gauss-Jordan: ideal para pivotear matrices aumentadas y diagnosticar la naturaleza del sistema.\n"
+            "• Método de Cramer: ejecuta determinantes automáticamente cuando la matriz es invertible."
+        )
+        insights.setWordWrap(True)
+        card_lay.addWidget(insights)
 
-        btn_gauss = QPushButton("Gauss-Jordan")
-        btn_gauss.setMinimumHeight(44)
-        btn_gauss.clicked.connect(self._open_gauss)
-        lay.addWidget(btn_gauss)
-
-        btn_cramer = QPushButton("Método de Cramer")
-        btn_cramer.setMinimumHeight(44)
-        btn_cramer.clicked.connect(self._open_cramer)
-        lay.addWidget(btn_cramer)
-
-        lay.addStretch(1)
+        card_lay.addStretch(1)
+        outer_lay.addWidget(card, 1)
 
         install_toggle_shortcut(self)
 
@@ -71,10 +91,14 @@ class MenuSistemasWindow(QMainWindow):
 
     def _open_gauss(self):
         from .sistemas.gauss_jordan_qt import GaussJordanWindow
+
         w = GaussJordanWindow(parent=self)
-        w.showMaximized(); self._child = w
+        w.showMaximized()
+        self._child = w
 
     def _open_cramer(self):
         from .sistemas.cramer_qt import CramerWindow
+
         w = CramerWindow(parent=self)
-        w.showMaximized(); self._child = w
+        w.showMaximized()
+        self._child = w

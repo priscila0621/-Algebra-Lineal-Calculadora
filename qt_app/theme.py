@@ -73,6 +73,19 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
             QGroupBox { border: 1px solid #3A3542; border-radius: 10px; margin-top: 12px; }
             QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 4px; color: #B9AFC0; }
             QTabWidget::pane { border: 1px solid #3A3542; border-radius: 10px; background: #1F1D22; }
+            QFrame#NavPanel {
+                background: #201E25;
+                border: 1px solid #3A3542;
+                border-radius: 18px;
+            }
+            QFrame#TopNav {
+                background: #15131A;
+                border: 1px solid #3A3542;
+                border-radius: 12px;
+            }
+            QFrame#TopNav QPushButton {
+                min-width: 120px;
+            }
             QTabBar::tab {
                 background: #1F1D22;
                 color: #F7F4F1;
@@ -150,6 +163,7 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
             QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 4px; color: #A78A94; }
             QTabWidget::pane { border: 1px solid #D9C8C5; border-radius: 12px; background: #FFFFFF; }
             QTabBar::tab {
+                min-width: 120px;
                 background: #F1E6E4;
                 color: #6E4B5E;
                 padding: 8px 16px;
@@ -161,6 +175,19 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
             }
             QTabBar::tab:selected { background: #B07A8C; color: #ffffff; }
             QTabBar::tab:hover { background: #9A5D73; color: #ffffff; }
+            QFrame#NavPanel {
+                background: #F1E6E4;
+                border: 1px solid #D9C8C5;
+                border-radius: 18px;
+            }
+            QFrame#TopNav {
+                background: #F1E6E4;
+                border: 1px solid #D9C8C5;
+                border-radius: 12px;
+            }
+            QFrame#TopNav QPushButton {
+                min-width: 120px;
+            }
             """
         )
 
