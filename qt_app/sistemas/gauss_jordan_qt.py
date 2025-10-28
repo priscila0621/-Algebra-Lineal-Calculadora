@@ -110,6 +110,16 @@ class GaussJordanWindow(QMainWindow):
                 w.deleteLater()
         self.result.clear()
         self.btn_resolver.setEnabled(False)
+        # Resetear estado para permitir vista previa y nuevas resoluciones
+        self.pasos_guardados = []
+        self.matriz_final = None
+        self.matriz_original = None
+        self.mostrando_detalles = False
+        try:
+            if self.detalle_button:
+                self.detalle_button.setEnabled(False)
+        except Exception:
+            pass
 
     def _rebuild_grid(self, filas: int, columnas: int):
         old = [[e.text() for e in row] for row in self._entries] if self._entries else []
@@ -130,10 +140,16 @@ class GaussJordanWindow(QMainWindow):
                 e.setAlignment(Qt.AlignCenter)
                 if old and i < len(old) and j < len(old[i]):
                     e.setText(old[i][j])
+                try:
+                    e.textChanged.connect(self._preview_sistema)
+                except Exception:
+                    pass
                 self.grid_layout.addWidget(e, i + 1, j)
                 row.append(e)
             self._entries.append(row)
         self.btn_resolver.setEnabled(True)
+        # Vista previa inicial
+        self._preview_sistema()
 
     def _change_rows(self, delta: int):
         self._rows = max(1, self._rows + delta)
@@ -297,6 +313,106 @@ class GaussJordanWindow(QMainWindow):
                 vals.append(Fraction(s))
             A.append(vals)
         return A
+
+    def _equations_from_aug(self, A_aug):
+        if not A_aug:
+            return []
+        n = len(A_aug)
+        m = len(A_aug[0])
+        num_vars = max(0, m - 1)
+
+        def coef_term(c, j):
+            if c == 0:
+                return None
+            var = f"x{j+1}"
+            if c == 1:
+                return f"{var}"
+            if c == -1:
+                return f"- {var}"
+            return f"{c}{var}"
+
+        lines = []
+        for i in range(n):
+            parts = []
+            for j in range(num_vars):
+                t = coef_term(A_aug[i][j], j)
+                if t is None:
+                    continue
+                if not parts:
+                    parts.append(str(t))
+                else:
+                    tt = str(t)
+                    if tt.startswith("-"):
+                        clean = tt[2:] if tt.startswith("- ") else tt[1:]
+                        parts.append(f"- {clean}")
+                    else:
+                        parts.append(f"+ {tt}")
+            left = " ".join(parts) if parts else "0"
+            right = str(A_aug[i][-1]) if m > 0 else "0"
+            lines.append(f"{left} = {right}")
+        return lines
+
+    def _preview_sistema(self):
+        # No sobreescribir resultados si ya se resolvi
+        if self.matriz_final is not None:
+            return
+        try:
+            A = []
+            for row in self._entries:
+                vals = []
+                for e in row:
+                    s = (e.text() or "0").strip()
+                    vals.append(Fraction(s))
+                A.append(vals)
+            lines = self._equations_from_aug(A)
+        except Exception:
+            lines = []
+        try:
+            self.result.clear()
+            if lines:
+                self.result.insertPlainText("Sistema de ecuaciones ingresado:\n")
+                for ln in lines:
+                    self.result.insertPlainText(ln + "\n")
+        except Exception:
+            pass
+
+    def _equations_from_aug(self, A_aug):
+        if not A_aug:
+            return []
+        n = len(A_aug)
+        m = len(A_aug[0])
+        num_vars = max(0, m - 1)
+
+        def coef_term(c, j):
+            if c == 0:
+                return None
+            var = f"x{j+1}"
+            if c == 1:
+                return f"{var}"
+            if c == -1:
+                return f"- {var}"
+            return f"{c}{var}"
+
+        lines = []
+        for i in range(n):
+            parts = []
+            for j in range(num_vars):
+                t = coef_term(A_aug[i][j], j)
+                if t is None:
+                    continue
+                if not parts:
+                    parts.append(str(t))
+                else:
+                    tt = str(t)
+                    if tt.startswith("-"):
+                        clean = tt[2:] if tt.startswith("- ") else tt[1:]
+                        parts.append(f"- {clean}")
+                    else:
+                        parts.append(f"+ {tt}")
+            left = " ".join(parts) if parts else "0"
+            right = str(A_aug[i][-1]) if m > 0 else "0"
+            lines.append(f"{left} = {right}")
+        return lines
 
     def _resolver(self):
         try:

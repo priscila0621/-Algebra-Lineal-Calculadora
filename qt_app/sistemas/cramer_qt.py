@@ -241,10 +241,16 @@ class CramerWindow(QMainWindow):
                 e.setAlignment(Qt.AlignCenter)
                 if old and i < len(old) and j < len(old[i]):
                     e.setText(old[i][j])
+                try:
+                    e.textChanged.connect(self._preview_sistema)
+                except Exception:
+                    pass
                 self.grid_layout.addWidget(e, i + 1, j)
                 row.append(e)
             self._entries.append(row)
         self.btn_resolver.setEnabled(True)
+        # Vista previa inicial
+        self._preview_sistema()
 
     def _change_rows(self, delta: int):
         self._rows = max(1, self._rows + delta)
@@ -386,6 +392,53 @@ class CramerWindow(QMainWindow):
             A.append(vals)
         return A
 
+    def _preview_sistema(self):
+        # Construye y muestra el sistema mientras se ingresa la matriz
+        try:
+            A_aug = self._leer_matriz()
+        except Exception:
+            A_aug = []
+        if not A_aug:
+            try:
+                self.procedimiento.clear()
+            except Exception:
+                pass
+            return
+        try:
+            n = len(A_aug); m = len(A_aug[0]); num_vars = max(0, m-1)
+            def coef_term(c, j):
+                if c == 0: return None
+                var = f"x{j+1}"
+                if c == 1: return var
+                if c == -1: return f"- {var}"
+                return f"{_fmt_fraction(c)}{var}"
+            lines = []
+            for i in range(n):
+                parts = []
+                for j in range(num_vars):
+                    t = coef_term(A_aug[i][j], j)
+                    if t is None: continue
+                    if not parts:
+                        parts.append(str(t))
+                    else:
+                        tt = str(t)
+                        if tt.startswith("-"):
+                            clean = tt[2:] if tt.startswith("- ") else tt[1:]
+                            parts.append(f"- {clean}")
+                        else:
+                            parts.append(f"+ {tt}")
+                left = " ".join(parts) if parts else "0"
+                right = _fmt_fraction(A_aug[i][-1]) if m>0 else "0"
+                lines.append(f"{left} = {right}")
+            html = "<div style='font-family:Segoe UI;'><div style='font-weight:700;margin-bottom:4px;'>Sistema de ecuaciones ingresado:</div>" \
+                   + "<pre style='font-family:Consolas,monospace;font-size:13px;margin:0;'>" + "\n".join(lines) + "</pre></div>"
+            try:
+                self.procedimiento.setHtml(html)
+            except Exception:
+                self.procedimiento.setPlainText("Sistema de ecuaciones ingresado:\n" + "\n".join(lines))
+        except Exception:
+            pass
+
     def _toggle_detalles(self):
         # kept for backward compatibility but not used; prefer popup
         visible = self.detalles_container.isVisible()
@@ -510,6 +563,44 @@ class CramerWindow(QMainWindow):
         # Cabecera con la fórmula
         html_parts = []
         html_parts.append("<div style='text-align:center; font-family:Segoe UI, sans-serif;'>")
+        # Sistema de ecuaciones ingresado (desde A y b)
+        try:
+            def _eq_lines(Aeq, beq):
+                nloc = len(Aeq)
+                mloc = len(Aeq[0]) if nloc else 0
+                out = []
+                for i in range(nloc):
+                    parts = []
+                    for j in range(mloc):
+                        c = Aeq[i][j]
+                        if c == 0:
+                            continue
+                        var = f"x{j+1}"
+                        if c == 1:
+                            term = var
+                        elif c == -1:
+                            term = f"- {var}"
+                        else:
+                            term = f"{_fmt_fraction(c)}{var}"
+                        if not parts:
+                            parts.append(term)
+                        else:
+                            if term.startswith("-"):
+                                clean = term[2:] if term.startswith("- ") else term[1:]
+                                parts.append(f"- {clean}")
+                            else:
+                                parts.append(f"+ {term}")
+                    left = " ".join(parts) if parts else "0"
+                    right = _fmt_fraction(beq[i]) if i < len(beq) else "0"
+                    out.append(f"{left} = {right}")
+                return out
+            eq_block = "<div style='text-align:left; display:inline-block; margin:8px 0;'>" \
+                       + "<div style='font-weight:700; margin-bottom:4px;'>Sistema de ecuaciones ingresado:</div>" \
+                       + "<pre style='font-family:Consolas,monospace;font-size:13px;margin:0;'>" \
+                       + "\n".join(_eq_lines(A, b)) + "</pre></div>"
+            html_parts.append(eq_block)
+        except Exception:
+            pass
         html_parts.append("<h3 style='margin:6px 0;'>Regla de Cramer (fórmula):</h3>")
         html_parts.append("<div style='font-size:14px; margin-bottom:10px;'>Para i = 1, ..., n: <b>x<sub>i</sub> = |A<sub>i</sub>| / |A|</b></div>")
 

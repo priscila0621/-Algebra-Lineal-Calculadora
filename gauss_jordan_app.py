@@ -153,6 +153,10 @@ class GaussJordanApp:
             for j in range(self.columnas):
                 e = ttk.Entry(self.frame_matriz, width=8, justify="center")
                 e.grid(row=i + 1, column=j, padx=6, pady=6)
+                try:
+                    e.bind("<KeyRelease>", lambda _ev=None: self._preview_sistema())
+                except Exception:
+                    pass
                 fila_entries.append(e)
             self.entries.append(fila_entries)
 
@@ -165,6 +169,9 @@ class GaussJordanApp:
             self.detalle_button.destroy()
             self.detalle_button = None
             self.mostrando_detalles = False
+
+        # Vista previa inicial
+        self._preview_sistema()
 
     # ---------------------------------------------------------
     # Nuevo: limpiar pantalla
@@ -186,6 +193,7 @@ class GaussJordanApp:
         self.soluciones = None
         self.detalle_button = None
         self.mostrando_detalles = False
+        self.entries = []
 
     # ---------------------------------------------------------
     # Convertir datos y aplicar Gauss-Jordan
@@ -289,6 +297,16 @@ class GaussJordanApp:
             return
 
         soluciones, tipo = self._extraer_soluciones(self.matriz_final)
+
+        # Mostrar el sistema de ecuaciones formado (a partir de la matriz original)
+        if self.matriz_original:
+            try:
+                self.text_result.insert(tk.END, "Sistema de ecuaciones ingresado:\n", ("bold",))
+                for ln in self._formatear_sistema_ecuaciones(self.matriz_original):
+                    self.text_result.insert(tk.END, ln + "\n")
+                self.text_result.insert(tk.END, "\n")
+            except Exception:
+                pass
 
         if tipo == "incompatible":
             self.text_result.insert(tk.END, "El sistema es inconsistente: aparece una fila del tipo 0 = b con bâ‰ 0\n")
@@ -551,6 +569,83 @@ class GaussJordanApp:
             line = " ".join(str(x).rjust(ancho) for x in fila)
             lines.append(line)
         return lines
+
+    # ---------------------------------------------------------
+    # Construir representacion del sistema A|b como ecuaciones
+    # ---------------------------------------------------------
+    def _formatear_sistema_ecuaciones(self, A_aug):
+        if not A_aug:
+            return []
+        n = len(A_aug)
+        m = len(A_aug[0])
+        num_vars = max(0, m - 1)
+
+        def coef_term(c, j):
+            if c == 0:
+                return None
+            var = f"x{j+1}"
+            if c == 1:
+                return f"{var}"
+            if c == -1:
+                return f"- {var}"
+            return f"{c}{var}"
+
+        lines = []
+        for i in range(n):
+            parts = []
+            for j in range(num_vars):
+                t = coef_term(A_aug[i][j], j)
+                if t is None:
+                    continue
+                if not parts:
+                    parts.append(str(t))
+                else:
+                    tt = str(t)
+                    if tt.startswith("-"):
+                        clean = tt[2:] if tt.startswith("- ") else tt[1:]
+                        parts.append(f"- {clean}")
+                    else:
+                        parts.append(f"+ {tt}")
+            left = " ".join(parts) if parts else "0"
+            right = str(A_aug[i][-1]) if m > 0 else "0"
+            lines.append(f"{left} = {right}")
+        return lines
+
+    # ---------------------------------------------------------
+    # Vista previa del sistema mientras se ingresa la matriz
+    # ---------------------------------------------------------
+    def _preview_sistema(self):
+        if getattr(self, "matriz_final", None) is not None:
+            return
+        try:
+            if not getattr(self, "entries", None):
+                # No hay cuadrícula: limpia el panel sin texto
+                self.text_result.configure(state="normal")
+                self.text_result.delete("1.0", tk.END)
+                self.text_result.configure(state="disabled")
+                return
+            A_aug = []
+            for i in range(getattr(self, "filas", 0)):
+                fila = []
+                for j in range(getattr(self, "columnas", 0)):
+                    val_str = self.entries[i][j].get().strip() if self.entries and i < len(self.entries) and j < len(self.entries[i]) else "0"
+                    if val_str == "":
+                        val_str = "0"
+                    fila.append(Fraction(val_str))
+                A_aug.append(fila)
+            lines = self._formatear_sistema_ecuaciones(A_aug)
+        except Exception:
+            lines = []
+        try:
+            self.text_result.configure(state="normal")
+            self.text_result.delete("1.0", tk.END)
+            if lines:
+                self.text_result.insert(tk.END, "Sistema de ecuaciones ingresado:\n", ("bold",))
+                for ln in lines:
+                    self.text_result.insert(tk.END, ln + "\n")
+            self.text_result.configure(state="disabled")
+        except Exception:
+            pass
 
     # ---------------------------------------------------------
     # Imprime varios vectores columna alineados y sumados
