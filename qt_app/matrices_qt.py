@@ -367,16 +367,43 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
             if fa != fb or ca != cb:
                 QMessageBox.warning(self, "Aviso", "Para sumar/restar, A y B deben tener las mismas dimensiones.")
                 return
+            As = [row[:] for row in A]
+            Bs = [row[:] for row in B]
+            pasos_pre = []
+            try:
+                if self.scalarA_chk.isChecked():
+                    kA = _parse_fraction(self.scalarA_edit.text())
+                    if kA != 1:
+                        pasos_pre.append(f"Aplicando escalar kA = {kA} a Matriz A:")
+                        for i in range(fa):
+                            for j in range(ca):
+                                pasos_pre.append(f"a{i+1}{j+1} := {kA}*{As[i][j]} = {kA*As[i][j]}")
+                                As[i][j] = kA * As[i][j]
+            except Exception:
+                pass
+            try:
+                if self.scalarB_chk.isChecked():
+                    kB = _parse_fraction(self.scalarB_edit.text())
+                    if kB != 1:
+                        if pasos_pre:
+                            pasos_pre.append("")
+                        pasos_pre.append(f"Aplicando escalar kB = {kB} a Matriz B:")
+                        for i in range(fb):
+                            for j in range(cb):
+                                pasos_pre.append(f"b{i+1}{j+1} := {kB}*{Bs[i][j]} = {kB*Bs[i][j]}")
+                                Bs[i][j] = kB * Bs[i][j]
+            except Exception:
+                pass
             R = [[Fraction(0) for _ in range(ca)] for _ in range(fa)]
             pasos = []
             for i in range(fa):
                 for j in range(ca):
                     if self._op_mode == "add":
-                        R[i][j] = A[i][j] + B[i][j]
-                        pasos.append(f"c{i+1}{j+1} = {A[i][j]} + {B[i][j]} = {R[i][j]}")
+                        R[i][j] = As[i][j] + Bs[i][j]
+                        pasos.append(f"c{i+1}{j+1} = {As[i][j]} + {Bs[i][j]} = {R[i][j]}")
                     else:
-                        R[i][j] = A[i][j] - B[i][j]
-                        pasos.append(f"c{i+1}{j+1} = {A[i][j]} - {B[i][j]} = {R[i][j]}")
+                        R[i][j] = As[i][j] - Bs[i][j]
+                        pasos.append(f"c{i+1}{j+1} = {As[i][j]} - {Bs[i][j]} = {R[i][j]}")
             # Mostrar resultado y pasos
             def _fmt_mat(M):
                 if not M: return []
@@ -397,8 +424,14 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
             for ln in _fmt_mat(R):
                 self.result_box.insertPlainText(ln + "\n")
             self.result_box.insertPlainText("\n")
-            self.result_box.insertPlainText("Suma de matrices (A + B):\n" if self._op_mode == "add" else "Resta de matrices (A - B):\n")
-            for line in pasos:
+            pasos_total = []
+            if pasos_pre:
+                pasos_total.append("Pasos de escalado (antes de sumar/restar):")
+                pasos_total.extend(pasos_pre)
+                pasos_total.append("")
+            pasos_total.append("Suma de matrices (A + B):" if self._op_mode == "add" else "Resta de matrices (A - B):")
+            pasos_total.extend(pasos)
+            for line in pasos_total:
                 self.result_box.insertPlainText(line + "\n")
             self._last_result = R
             try:

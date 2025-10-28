@@ -48,6 +48,11 @@ class MultiplicacionMatricesApp:
         self.current_index = 0
         self.entries_grid = None
         self.custom_op = None  # None | 'add' | 'sub'
+        self.chain_scalar_use_var = None
+        self.chain_scalar_val_var = None
+        self.chain_scalar_frame = None
+        self.chain_lock_first_matrix = False
+        self._ultimo_titulo_resultado = "Resultado de la Multiplicación"
 
         self._crear_bienvenida()
         self._crear_configuracion()
@@ -233,6 +238,7 @@ class MultiplicacionMatricesApp:
         self.label_ing_title = tk.Label(self.ing_header, text="", font=("Segoe UI", 16, "bold"),
                                         bg=self.bg, fg="#b91c1c")
         self.label_ing_title.pack()
+        self.chain_scalar_frame = tk.Frame(f, bg=self.bg)
         self.ing_table = tk.Frame(f, bg=self.bg); self.ing_table.pack(pady=8)
         self.ing_error = tk.Label(f, text="", fg="red", bg=self.bg); self.ing_error.pack()
         btns = tk.Frame(f, bg=self.bg); btns.pack(pady=12)
@@ -247,9 +253,21 @@ class MultiplicacionMatricesApp:
         for w in self.ing_table.winfo_children():
             w.destroy()
         self.ing_error.config(text="")
+        if self.custom_op in ("add", "sub"):
+            self._render_chain_scalar_controls()
+        elif self.chain_scalar_frame is not None:
+            self.chain_scalar_frame.pack_forget()
         idx = self.current_index
         f, c = self.dimensiones[idx]
-        self.label_ing_title.config(text=f"Ingresa los valores de la Matriz {idx+1} ({f}x{c})")
+        if self.custom_op in ("add", "sub") and self.chain_lock_first_matrix and idx == 0:
+            self.label_ing_title.config(text=f"Matriz resultado (solo lectura) ({f}x{c})")
+        else:
+            self.label_ing_title.config(text=f"Ingresa los valores de la Matriz {idx+1} ({f}x{c})")
+        if hasattr(self.btn_prev, "state"):
+            if idx == 0:
+                self.btn_prev.state(["disabled"])
+            else:
+                self.btn_prev.state(["!disabled"])
         self.entries_grid = []
         grid = tk.Frame(self.ing_table, bg=self.bg); grid.pack()
         for i in range(f):
@@ -265,18 +283,78 @@ class MultiplicacionMatricesApp:
                 for j, entrada in enumerate(fila):
                     entrada.delete(0, "end")
                     entrada.insert(0, str(matriz_guardada[i][j]))
+                    if self.custom_op in ("add", "sub") and self.chain_lock_first_matrix and idx == 0:
+                        entrada.config(state="readonly")
 
         # Escalar por matriz (opcional)
         row = tk.Frame(self.ing_table, bg=self.bg); row.pack(pady=(10, 0))
         self.scalar_chk_cur = tk.BooleanVar(value=self.scalar_used_per_matrix[idx] if idx < len(self.scalar_used_per_matrix) else False)
         self.scalar_val_cur = tk.StringVar(value=str(self.scalars_per_matrix[idx] if idx < len(self.scalars_per_matrix) else Fraction(1)))
-        ttk.Checkbutton(row, text=f"Usar escalar para Matriz {idx+1}", variable=self.scalar_chk_cur).pack(side="left")
+        if self.custom_op in ("add", "sub"):
+            letra = chr(ord("A") + idx) if idx < 26 else str(idx + 1)
+            label_scalar = f"Usar escalar k{letra}"
+        else:
+            label_scalar = f"Usar escalar para Matriz {idx+1}"
+        ttk.Checkbutton(row, text=label_scalar, variable=self.scalar_chk_cur).pack(side="left")
         tk.Entry(row, width=10, bg=self.entry_bg, textvariable=self.scalar_val_cur).pack(side="left", padx=6)
 
     def _ingresar_anterior(self):
         if self.current_index > 0:
             self.current_index -= 1
             self._render_ingreso_actual()
+
+    def _render_chain_scalar_controls(self):
+        if self.chain_scalar_frame is None:
+            return
+        for w in self.chain_scalar_frame.winfo_children():
+            w.destroy()
+        self.chain_scalar_frame.pack(fill="x", pady=(0, 8))
+        tk.Label(
+            self.chain_scalar_frame,
+            text="Aplicar escalar opcional al resultado final:",
+            font=("Segoe UI", 11, "bold"),
+            bg=self.bg,
+            fg="#7f1d1d",
+        ).pack(anchor="w", padx=4)
+        row = tk.Frame(self.chain_scalar_frame, bg=self.bg)
+        row.pack(anchor="w", pady=(2, 0), padx=4)
+        if self.chain_scalar_use_var is None:
+            self.chain_scalar_use_var = tk.BooleanVar(value=getattr(self, "use_scalar", False))
+        if self.chain_scalar_val_var is None:
+            self.chain_scalar_val_var = tk.StringVar(value=str(getattr(self, "scalar_k", Fraction(1))))
+        ttk.Checkbutton(row, text="Usar escalar k", variable=self.chain_scalar_use_var).pack(side="left")
+        tk.Entry(row, width=10, bg=self.entry_bg, textvariable=self.chain_scalar_val_var).pack(side="left", padx=6)
+        tk.Label(row, text="(se aplica tras sumar/restar)", bg=self.bg, fg="#7f1d1d").pack(side="left")
+
+    def _actualizar_scalar_global_chain(self):
+        if self.chain_scalar_use_var is None or self.chain_scalar_val_var is None:
+            return True
+        try:
+            use_scalar = bool(self.chain_scalar_use_var.get())
+        except Exception:
+            use_scalar = False
+        if use_scalar:
+            try:
+                scalar_val = self._parse_fraction(self.chain_scalar_val_var.get())
+            except Exception:
+                self.ing_error.config(text="Escalar global invalido.")
+                return False
+        else:
+            scalar_val = Fraction(1)
+        self.ing_error.config(text="")
+        self.use_scalar = use_scalar
+        self.scalar_k = scalar_val if use_scalar else Fraction(1)
+        if hasattr(self, "scalar_use_var"):
+            try:
+                self.scalar_use_var.set(self.use_scalar)
+            except Exception:
+                pass
+        if hasattr(self, "scalar_val_var"):
+            try:
+                self.scalar_val_var.set(str(self.scalar_k))
+            except Exception:
+                pass
+        return True
 
     def _confirmar_matriz(self):
         try:
@@ -298,7 +376,7 @@ class MultiplicacionMatricesApp:
             except Exception:
                 kval = Fraction(1)
             if self.current_index < len(self.scalar_used_per_matrix):
-                self.scalar_used_per_matrix[self.current_index] = usek and (kval != 1)
+                self.scalar_used_per_matrix[self.current_index] = usek
                 self.scalars_per_matrix[self.current_index] = kval
             if self.current_index + 1 < self.num_matrices:
                 self.current_index += 1
@@ -306,6 +384,8 @@ class MultiplicacionMatricesApp:
             else:
                 # Si venimos de suma/resta encadenada, calcular esa operación
                 if self.custom_op in ("add", "sub"):
+                    if not self._actualizar_scalar_global_chain():
+                        return
                     self._calcular_suma_resta()
                 else:
                     self._calcular_multiplicacion()
@@ -345,7 +425,7 @@ class MultiplicacionMatricesApp:
             pasos_general = []
             for ix, M in enumerate(self.matrices):
                 k = self.scalars_per_matrix[ix] if ix < len(self.scalars_per_matrix) else Fraction(1)
-                usar = (ix < len(self.scalar_used_per_matrix) and self.scalar_used_per_matrix[ix] and k != 1)
+                usar = (ix < len(self.scalar_used_per_matrix) and self.scalar_used_per_matrix[ix])
                 if usar:
                     filas = len(M); cols = len(M[0]) if filas else 0
                     Ms = [[Fraction(0) for _ in range(cols)] for _ in range(filas)]
@@ -358,7 +438,6 @@ class MultiplicacionMatricesApp:
                     mats_escaladas.append(Ms)
                 else:
                     mats_escaladas.append(M)
-
             parcial = mats_escaladas[0]
             for ix in range(1, len(self.matrices)):
                 pasos_general.append("")
@@ -446,12 +525,16 @@ class MultiplicacionMatricesApp:
             pasos_general = []
             for ix, M in enumerate([A, B]):
                 k = self.scalars_per_matrix[ix] if ix < len(self.scalars_per_matrix) else Fraction(1)
-                usar = (ix < len(self.scalar_used_per_matrix) and self.scalar_used_per_matrix[ix] and k != 1)
+                usar = (ix < len(self.scalar_used_per_matrix) and self.scalar_used_per_matrix[ix])
                 if usar:
                     filas = len(M); cols = len(M[0]) if filas else 0
                     Ms = [[Fraction(0) for _ in range(cols)] for _ in range(filas)]
                     pasos_general.append("")
-                    pasos_general.append(f"Aplicando escalar k_{ix+1} = {k} a Matriz {ix+1}:")
+                    if self.custom_op in ("add", "sub") and ix < 26:
+                        nombre_escalar = f"k{chr(ord('A') + ix)}"
+                    else:
+                        nombre_escalar = f"k_{ix+1}"
+                    pasos_general.append(f"Aplicando escalar {nombre_escalar} = {k} a Matriz {ix+1}:")
                     for i in range(filas):
                         for j in range(cols):
                             Ms[i][j] = M[i][j] * k
@@ -460,12 +543,15 @@ class MultiplicacionMatricesApp:
                 else:
                     mats_escaladas.append(M)
 
+            self.matrices = mats_escaladas
             A2, B2 = mats_escaladas[0], mats_escaladas[1]
             if self.custom_op == "add":
+                titulo = "Resultado de la Suma"
                 pasos_general.append("")
                 pasos_general.append("Suma de matrices (A + B):")
                 R, pasos = self._sumar_matrices(A2, B2)
             else:
+                titulo = "Resultado de la Resta"
                 pasos_general.append("")
                 pasos_general.append("Resta de matrices (A - B):")
                 R, pasos = self._restar_matrices(A2, B2)
@@ -478,18 +564,22 @@ class MultiplicacionMatricesApp:
                 pasos_general.append(f"Aplicando escalar k = {self.scalar_k} a toda la matriz resultante:")
                 pasos_general.extend(pasos_k)
 
-            self._mostrar_resultados(R, pasos_general)
+            self._mostrar_resultados(R, pasos_general, titulo=titulo)
             self._mostrar_frame("resultados")
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrio un problema: {e}")
         finally:
             self.custom_op = None
+            self.chain_lock_first_matrix = False
 
-    def _mostrar_resultados(self, resultado_final, pasos_general):
+    def _mostrar_resultados(self, resultado_final, pasos_general, titulo=None):
         for w in self.result_container.winfo_children():
             w.destroy()
 
-        tk.Label(self.result_container, text="Resultado de la Multiplicación",
+        if titulo is None:
+            titulo = "Resultado de la Multiplicaci�n"
+        self._ultimo_titulo_resultado = titulo
+        tk.Label(self.result_container, text=titulo,
                  font=("Segoe UI", 18, "bold"), bg=self.bg, fg="#b91c1c").pack(pady=(10, 10))
 
         # Mostrar matrices ingresadas y escalar si aplica
@@ -554,8 +644,13 @@ class MultiplicacionMatricesApp:
             self.num_matrices = 2
             self.dimensiones = [(rows, cols), (rows, cols)]
             self.matrices = [resultado_final, None]
-            self.current_index = 1
+            self.current_index = 0
             self.custom_op = "add"
+            self.scalar_used_per_matrix = [False, False]
+            self.scalars_per_matrix = [Fraction(1), Fraction(1)]
+            self.chain_scalar_use_var = None
+            self.chain_scalar_val_var = None
+            self.chain_lock_first_matrix = True
             self._mostrar_frame("ingreso")
             self._render_ingreso_actual()
 
@@ -563,8 +658,13 @@ class MultiplicacionMatricesApp:
             self.num_matrices = 2
             self.dimensiones = [(rows, cols), (rows, cols)]
             self.matrices = [resultado_final, None]
-            self.current_index = 1
+            self.current_index = 0
             self.custom_op = "sub"
+            self.scalar_used_per_matrix = [False, False]
+            self.scalars_per_matrix = [Fraction(1), Fraction(1)]
+            self.chain_scalar_use_var = None
+            self.chain_scalar_val_var = None
+            self.chain_lock_first_matrix = True
             self._mostrar_frame("ingreso")
             self._render_ingreso_actual()
 
@@ -594,4 +694,3 @@ class MultiplicacionMatricesApp:
                 self.volver_callback()
         except Exception:
             pass
-
