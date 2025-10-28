@@ -81,6 +81,10 @@ class _BaseMatrixWindow(QMainWindow):
         self.lay.addWidget(self.result_box, 1)
 
         self.entries = []
+        try:
+            self.op_label.setText("Operacion: Multiplicacion (A x B)")
+        except Exception:
+            pass
 
     def _crear(self):
         try:
@@ -106,6 +110,32 @@ class _BaseMatrixWindow(QMainWindow):
                 g.addWidget(e, i, j)
                 row.append(e)
             self.entries.append(row)
+        self.btn_run.setEnabled(True)
+
+    def _setup_entries_addsub(self, f: int, c: int):
+        # Construye dos grillas f x c (A y B) para suma/resta; A se rellena con el último resultado
+        for i in reversed(range(self.grid.count())):
+            w = self.grid.itemAt(i).widget()
+            if w:
+                w.setParent(None)
+        self.entries = []
+        for m in range(2):
+            g = QGridLayout(); g.setHorizontalSpacing(6); g.setVerticalSpacing(6)
+            box = QFrame(); box.setLayout(g)
+            title = "Matriz A (resultado)" if m == 0 else "Matriz B (nueva)"
+            self.grid.addWidget(QLabel(title), 0, m, alignment=Qt.AlignHCenter)
+            self.grid.addWidget(box, 1, m)
+            mat_entries = []
+            for i in range(f):
+                row = []
+                for j in range(c):
+                    e = QLineEdit(); e.setAlignment(Qt.AlignCenter); e.setPlaceholderText("0")
+                    if m == 0 and hasattr(self, "_last_result") and self._last_result and i < len(self._last_result) and j < len(self._last_result[0]):
+                        e.setText(str(self._last_result[i][j]))
+                    g.addWidget(e, i, j)
+                    row.append(e)
+                mat_entries.append(row)
+            self.entries.append(mat_entries)
         self.btn_run.setEnabled(True)
 
     def _leer(self):
@@ -277,6 +307,8 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
         row.addSpacing(12); row.addWidget(QLabel("Columnas B:")); row.addWidget(self.p_edit)
         # Escalares opcionales por matriz
         row.addSpacing(18)
+        self.op_label = QLabel("Operacion: Multiplicacion (A x B)")
+        self.lay.addWidget(self.op_label)
         self.scalarA_chk = QCheckBox("kA");
         self.scalarA_edit = QLineEdit("1"); self.scalarA_edit.setFixedWidth(70); self.scalarA_edit.setAlignment(Qt.AlignCenter)
         row.addWidget(QLabel("Escalar A:")); row.addWidget(self.scalarA_chk); row.addWidget(self.scalarA_edit)
@@ -290,6 +322,17 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
         self._chain_btn.setEnabled(False)
         self._chain_btn.clicked.connect(self._use_result_as_A)
         self.lay.addWidget(self._chain_btn)
+        # Botones para sumar/restar con otra matriz del mismo tamaño
+        chain_row = QHBoxLayout()
+        self._chain_add_btn = QPushButton("Sumar resultado con otra matriz")
+        self._chain_sub_btn = QPushButton("Restar otra matriz al resultado")
+        self._chain_add_btn.setEnabled(False)
+        self._chain_sub_btn.setEnabled(False)
+        self._chain_add_btn.clicked.connect(lambda: self._prepare_add_sub('add'))
+        self._chain_sub_btn.clicked.connect(lambda: self._prepare_add_sub('sub'))
+        chain_row.addWidget(self._chain_add_btn)
+        chain_row.addWidget(self._chain_sub_btn)
+        self.lay.addLayout(chain_row)
 
     def _setup_entries(self):
         for i in reversed(range(self.grid.count())):
@@ -317,6 +360,55 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
         Agrid, Bgrid = self.entries
         A = [[_parse_fraction(e.text()) for e in row] for row in Agrid]
         B = [[_parse_fraction(e.text()) for e in row] for row in Bgrid]
+        # Si hay una operación de suma/resta pendiente
+        if hasattr(self, "_op_mode") and self._op_mode in ("add", "sub"):
+            fa, ca = len(A), len(A[0]) if A else 0
+            fb, cb = len(B), len(B[0]) if B else 0
+            if fa != fb or ca != cb:
+                QMessageBox.warning(self, "Aviso", "Para sumar/restar, A y B deben tener las mismas dimensiones.")
+                return
+            R = [[Fraction(0) for _ in range(ca)] for _ in range(fa)]
+            pasos = []
+            for i in range(fa):
+                for j in range(ca):
+                    if self._op_mode == "add":
+                        R[i][j] = A[i][j] + B[i][j]
+                        pasos.append(f"c{i+1}{j+1} = {A[i][j]} + {B[i][j]} = {R[i][j]}")
+                    else:
+                        R[i][j] = A[i][j] - B[i][j]
+                        pasos.append(f"c{i+1}{j+1} = {A[i][j]} - {B[i][j]} = {R[i][j]}")
+            # Mostrar resultado y pasos
+            def _fmt_mat(M):
+                if not M: return []
+                w = max(len(str(x)) for r in M for x in r)
+                out = []
+                for i, r in enumerate(M):
+                    if i == 0: l,rbr = "\u23A1","\u23A4"
+                    elif i == len(M)-1: l,rbr = "\u23A3","\u23A6"
+                    else: l,rbr = "\u23A2","\u23A5"
+                    out.append(f"{l} {' '.join(str(x).rjust(w) for x in r)} {rbr}")
+                return out
+            try:
+                self._show_matrix_result(R, title="Matriz resultante")
+            except Exception:
+                pass
+            self.result_box.clear()
+            self.result_box.insertPlainText("Matriz resultante\n\n")
+            for ln in _fmt_mat(R):
+                self.result_box.insertPlainText(ln + "\n")
+            self.result_box.insertPlainText("\n")
+            self.result_box.insertPlainText("Suma de matrices (A + B):\n" if self._op_mode == "add" else "Resta de matrices (A - B):\n")
+            for line in pasos:
+                self.result_box.insertPlainText(line + "\n")
+            self._last_result = R
+            try:
+                self._chain_btn.setEnabled(True)
+                self._chain_add_btn.setEnabled(True)
+                self._chain_sub_btn.setEnabled(True)
+            except Exception:
+                pass
+            self._op_mode = None
+            return
         fa, ca = len(A), len(A[0]) if A else 0
         fb, cb = len(B), len(B[0]) if B else 0
         if ca != fb:
@@ -396,6 +488,8 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
         self._last_result = R
         try:
             self._chain_btn.setEnabled(True)
+            self._chain_add_btn.setEnabled(True)
+            self._chain_sub_btn.setEnabled(True)
         except Exception:
             pass
 
@@ -409,12 +503,29 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
         # reconstruir grillas y volcar resultado en A
         self._setup_entries()
         try:
+            self.op_label.setText("Operacion: Multiplicacion (A x B)")
+        except Exception:
+            pass
+        try:
             Agrid, _Bgrid = self.entries
         except Exception:
             return
         for i in range(fa):
             for j in range(cb):
                 Agrid[i][j].setText(str(self._last_result[i][j]))
+
+    def _prepare_add_sub(self, op: str):
+        # Prepara entradas para suma/resta mostrando A = resultado previo y B vacía
+        if not hasattr(self, "_last_result") or not self._last_result:
+            return
+        try:
+            self.op_label.setText("Operacion: " + ("Suma (A + B)" if op=="add" else "Resta (A - B)"))
+        except Exception:
+            pass
+        self._op_mode = op
+        fa = len(self._last_result)
+        cb = len(self._last_result[0]) if fa else 0
+        self._setup_entries_addsub(fa, cb)
 
 
 class TranspuestaMatrizWindow(_BaseMatrixWindow):

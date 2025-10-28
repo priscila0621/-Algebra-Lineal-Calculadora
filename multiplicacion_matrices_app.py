@@ -47,6 +47,7 @@ class MultiplicacionMatricesApp:
         self.scalars_per_matrix = []
         self.current_index = 0
         self.entries_grid = None
+        self.custom_op = None  # None | 'add' | 'sub'
 
         self._crear_bienvenida()
         self._crear_configuracion()
@@ -303,7 +304,11 @@ class MultiplicacionMatricesApp:
                 self.current_index += 1
                 self._render_ingreso_actual()
             else:
-                self._calcular_multiplicacion()
+                # Si venimos de suma/resta encadenada, calcular esa operación
+                if self.custom_op in ("add", "sub"):
+                    self._calcular_suma_resta()
+                else:
+                    self._calcular_multiplicacion()
         except Exception as e:
             self.ing_error.config(text=f"Error en los datos: {e}")
 
@@ -403,6 +408,83 @@ class MultiplicacionMatricesApp:
             pasos.extend(row_terms)
         return R, pasos
 
+    def _sumar_matrices(self, A, B):
+        fa, ca = len(A), len(A[0])
+        fb, cb = len(B), len(B[0])
+        if fa != fb or ca != cb:
+            raise ValueError("Para sumar, las matrices deben tener las mismas dimensiones.")
+        R = [[Fraction(0) for _ in range(ca)] for _ in range(fa)]
+        pasos = []
+        for i in range(fa):
+            for j in range(ca):
+                R[i][j] = A[i][j] + B[i][j]
+                pasos.append(f"c{i+1}{j+1} = {A[i][j]} + {B[i][j]} = {R[i][j]}")
+        return R, pasos
+
+    def _restar_matrices(self, A, B):
+        fa, ca = len(A), len(A[0])
+        fb, cb = len(B), len(B[0])
+        if fa != fb or ca != cb:
+            raise ValueError("Para restar, las matrices deben tener las mismas dimensiones.")
+        R = [[Fraction(0) for _ in range(ca)] for _ in range(fa)]
+        pasos = []
+        for i in range(fa):
+            for j in range(ca):
+                R[i][j] = A[i][j] - B[i][j]
+                pasos.append(f"c{i+1}{j+1} = {A[i][j]} - {B[i][j]} = {R[i][j]}")
+        return R, pasos
+
+    def _calcular_suma_resta(self):
+        try:
+            if len(self.matrices) < 2 or not self.matrices[0] or not self.matrices[1]:
+                messagebox.showerror("Error", "Faltan matrices para operar.")
+                return
+            A = self.matrices[0]
+            B = self.matrices[1]
+            # aplicar escalares por matriz si marcados
+            mats_escaladas = []
+            pasos_general = []
+            for ix, M in enumerate([A, B]):
+                k = self.scalars_per_matrix[ix] if ix < len(self.scalars_per_matrix) else Fraction(1)
+                usar = (ix < len(self.scalar_used_per_matrix) and self.scalar_used_per_matrix[ix] and k != 1)
+                if usar:
+                    filas = len(M); cols = len(M[0]) if filas else 0
+                    Ms = [[Fraction(0) for _ in range(cols)] for _ in range(filas)]
+                    pasos_general.append("")
+                    pasos_general.append(f"Aplicando escalar k_{ix+1} = {k} a Matriz {ix+1}:")
+                    for i in range(filas):
+                        for j in range(cols):
+                            Ms[i][j] = M[i][j] * k
+                            pasos_general.append(f"a{i+1}{j+1} := {k}*{M[i][j]} = {Ms[i][j]}")
+                    mats_escaladas.append(Ms)
+                else:
+                    mats_escaladas.append(M)
+
+            A2, B2 = mats_escaladas[0], mats_escaladas[1]
+            if self.custom_op == "add":
+                pasos_general.append("")
+                pasos_general.append("Suma de matrices (A + B):")
+                R, pasos = self._sumar_matrices(A2, B2)
+            else:
+                pasos_general.append("")
+                pasos_general.append("Resta de matrices (A - B):")
+                R, pasos = self._restar_matrices(A2, B2)
+            pasos_general.extend(pasos)
+
+            # aplicar escalar global si fue configurado
+            if getattr(self, 'use_scalar', False) and getattr(self, 'scalar_k', Fraction(1)) != 1:
+                R, pasos_k = self._aplicar_escalar(R, self.scalar_k)
+                pasos_general.append("")
+                pasos_general.append(f"Aplicando escalar k = {self.scalar_k} a toda la matriz resultante:")
+                pasos_general.extend(pasos_k)
+
+            self._mostrar_resultados(R, pasos_general)
+            self._mostrar_frame("resultados")
+        except Exception as e:
+            messagebox.showerror("Error", f"Ocurrio un problema: {e}")
+        finally:
+            self.custom_op = None
+
     def _mostrar_resultados(self, resultado_final, pasos_general):
         for w in self.result_container.winfo_children():
             w.destroy()
@@ -460,11 +542,38 @@ class MultiplicacionMatricesApp:
             self.dimensiones = [(rows, cols), (cols, p)]
             self.matrices = [resultado_final, None]
             self.current_index = 1
+            self.custom_op = None
             self._mostrar_frame("ingreso")
             self._render_ingreso_actual()
 
         ttk.Button(self.result_container, text="Usar resultado como A",
                    style="Primary.TButton", command=usar_resultado).pack(pady=(8, 0))
+
+        # Encadenar suma/resta con otra matriz (mismas dimensiones)
+        def sumar_resultado():
+            self.num_matrices = 2
+            self.dimensiones = [(rows, cols), (rows, cols)]
+            self.matrices = [resultado_final, None]
+            self.current_index = 1
+            self.custom_op = "add"
+            self._mostrar_frame("ingreso")
+            self._render_ingreso_actual()
+
+        def restar_resultado():
+            self.num_matrices = 2
+            self.dimensiones = [(rows, cols), (rows, cols)]
+            self.matrices = [resultado_final, None]
+            self.current_index = 1
+            self.custom_op = "sub"
+            self._mostrar_frame("ingreso")
+            self._render_ingreso_actual()
+
+        chain = tk.Frame(self.result_container, bg=self.bg)
+        chain.pack(pady=(6, 8))
+        ttk.Button(chain, text="Sumar resultado con otra matriz", style="Primary.TButton",
+                   command=sumar_resultado).pack(side="left", padx=6)
+        ttk.Button(chain, text="Restar otra matriz al resultado", style="Primary.TButton",
+                   command=restar_resultado).pack(side="left", padx=6)
 
         # Procedimiento
         tk.Label(self.result_container, text="Procedimiento paso a paso:",
