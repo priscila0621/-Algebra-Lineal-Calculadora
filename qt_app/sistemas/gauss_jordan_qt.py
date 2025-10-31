@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt
 from fractions import Fraction
 from copy import deepcopy
 import re
+from ..theme import bind_font_scale_stylesheet, make_font_scale_selector
 
 
 def _fmt(x):
@@ -109,6 +110,10 @@ class GaussJordanWindow(QMainWindow):
         self.btn_ingresar_ecuaciones = QPushButton("Ingresar ecuaciones")
         self.btn_ingresar_ecuaciones.clicked.connect(self._open_ecuaciones_dialog)
         top.addWidget(self.btn_ingresar_ecuaciones)
+        top.addSpacing(18)
+        font_selector = make_font_scale_selector(self)
+        font_selector.setMinimumWidth(160)
+        top.addWidget(font_selector)
         # Botón de verificación de independencia retirado a petición del usuario
         top.addStretch(1)
 
@@ -127,7 +132,11 @@ class GaussJordanWindow(QMainWindow):
         main.addWidget(title)
         self.result = QTextEdit()
         self.result.setReadOnly(True)
-        self.result.setStyleSheet("font-family: Consolas, monospace; font-size: 12px;")
+        bind_font_scale_stylesheet(
+            self.result,
+            "font-family: Consolas, monospace; font-size: {body}px;",
+            body=12,
+        )
         main.addWidget(self.result, 1)
 
         self.btn_resolver = QPushButton("Resolver")

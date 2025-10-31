@@ -13,7 +13,12 @@ from .menu_matrices_qt import MenuMatricesWindow
 from .menu_sistemas_qt import MenuSistemasWindow
 from .independencia_qt import IndependenciaWindow
 from .transformaciones_qt import TransformacionesWindow
-from .theme import make_theme_toggle_button, install_toggle_shortcut
+from .theme import (
+    make_theme_toggle_button,
+    install_toggle_shortcut,
+    bind_font_scale_stylesheet,
+    make_font_scale_selector,
+)
 
 
 class MenuPrincipalWindow(QMainWindow):
@@ -87,6 +92,10 @@ class MenuPrincipalWindow(QMainWindow):
 
         top_bar = QHBoxLayout()
         top_bar.addStretch(1)
+        font_selector = make_font_scale_selector(self)
+        font_selector.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        top_bar.addWidget(font_selector, 0, Qt.AlignVCenter)
+        top_bar.addSpacing(12)
         toggle = make_theme_toggle_button(self)
         toggle.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         top_bar.addWidget(toggle, 0, Qt.AlignVCenter)
@@ -98,17 +107,19 @@ class MenuPrincipalWindow(QMainWindow):
         logo = QLabel("NL")
         logo.setAlignment(Qt.AlignCenter)
         logo.setFixedSize(96, 96)
-        logo.setStyleSheet(
+        bind_font_scale_stylesheet(
+            logo,
             """
-            QLabel {
+            QLabel {{
                 background-color: #B07A8C;
                 color: #FFFFFF;
                 border-radius: 48px;
-                font-size: 36px;
+                font-size: {logo}px;
                 font-weight: 700;
                 letter-spacing: 4px;
-            }
-            """
+            }}
+            """,
+            logo=36,
         )
         hero.addWidget(logo, 0, Qt.AlignTop)
 

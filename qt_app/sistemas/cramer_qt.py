@@ -4,7 +4,13 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QPlainTextEdit
 from PySide6.QtCore import Qt
-from ..theme import make_theme_toggle_button, install_toggle_shortcut
+from ..theme import (
+    make_theme_toggle_button,
+    install_toggle_shortcut,
+    bind_font_scale_stylesheet,
+    scaled_font_px,
+    make_font_scale_selector,
+)
 from fractions import Fraction
 from qt_app.matrices_qt import determinante_con_pasos as determinante_con_pasos_ascii
 import re
@@ -38,12 +44,20 @@ class DetallesDeterminantesWindow(QMainWindow):
 
         self.header = QLabel("")
         self.header.setAlignment(Qt.AlignCenter)
-        self.header.setStyleSheet("font-weight:700; font-size:14px;")
+        bind_font_scale_stylesheet(
+            self.header,
+            "font-weight:700; font-size:{body}px;",
+            body=14,
+        )
         lay.addWidget(self.header)
 
         self.text = QTextEdit()
         self.text.setReadOnly(True)
-        self.text.setStyleSheet("font-family:Consolas,monospace;font-size:12px;")
+        bind_font_scale_stylesheet(
+            self.text,
+            "font-family:Consolas,monospace;font-size:{body}px;",
+            body=12,
+        )
         lay.addWidget(self.text, 1)
 
         btns = QHBoxLayout()
@@ -181,6 +195,10 @@ class CramerWindow(QMainWindow):
         self.btn_ingresar_ecuaciones = QPushButton("Ingresar ecuaciones")
         self.btn_ingresar_ecuaciones.clicked.connect(self._open_ecuaciones_dialog)
         top.addWidget(self.btn_ingresar_ecuaciones)
+        top.addSpacing(18)
+        font_selector = make_font_scale_selector(self)
+        font_selector.setMinimumWidth(160)
+        top.addWidget(font_selector)
         top.addStretch(1)
 
         self.scroll = QScrollArea()
@@ -204,11 +222,19 @@ class CramerWindow(QMainWindow):
         rh_lay.setContentsMargins(12, 12, 12, 12)
         rh_lay.setSpacing(8)
         self.det_label = QLabel("det(A) = —")
-        self.det_label.setStyleSheet("font-size:18px;font-weight:700;color:#b91c1c;")
+        bind_font_scale_stylesheet(
+            self.det_label,
+            "font-size:{title}px;font-weight:700;color:#b91c1c;",
+            title=18,
+        )
         rh_lay.addWidget(self.det_label)
         self.vars_box = QTextEdit()
         self.vars_box.setReadOnly(True)
-        self.vars_box.setStyleSheet("font-size:16px;font-weight:700;background:transparent;border:none;font-family:Segoe UI;")
+        bind_font_scale_stylesheet(
+            self.vars_box,
+            "font-size:{body}px;font-weight:700;background:transparent;border:none;font-family:Segoe UI;",
+            body=16,
+        )
         rh_lay.addWidget(self.vars_box)
         main.addWidget(self.result_highlight)
 
@@ -221,7 +247,11 @@ class CramerWindow(QMainWindow):
         # Panel de procedimiento (alto nivel) y panel ocultable para cálculos de determinantes
         self.procedimiento = QTextEdit()
         self.procedimiento.setReadOnly(True)
-        self.procedimiento.setStyleSheet("font-family:Segoe UI; font-size:12px;")
+        bind_font_scale_stylesheet(
+            self.procedimiento,
+            "font-family:Segoe UI; font-size:{body}px;",
+            body=12,
+        )
         main.addWidget(self.procedimiento, 1)
 
         self.toggle_det_btn = QPushButton("Mostrar cálculos de determinantes")
@@ -235,7 +265,11 @@ class CramerWindow(QMainWindow):
         det_l.setContentsMargins(6, 6, 6, 6)
         self.detalles_text = QTextEdit()
         self.detalles_text.setReadOnly(True)
-        self.detalles_text.setStyleSheet("font-family:Consolas,monospace;font-size:12px;")
+        bind_font_scale_stylesheet(
+            self.detalles_text,
+            "font-family:Consolas,monospace;font-size:{body}px;",
+            body=12,
+        )
         det_l.addWidget(self.detalles_text)
         main.addWidget(self.detalles_container, 1)
 
@@ -493,8 +527,14 @@ class CramerWindow(QMainWindow):
                 left = " ".join(parts) if parts else "0"
                 right = _fmt_fraction(A_aug[i][-1]) if m>0 else "0"
                 lines.append(f"{left} = {right}")
-            html = "<div style='font-family:Segoe UI;'><div style='font-weight:700;margin-bottom:4px;'>Sistema de ecuaciones ingresado:</div>" \
-                   + "<pre style='font-family:Consolas,monospace;font-size:13px;margin:0;'>" + "\n".join(lines) + "</pre></div>"
+            mono_pre = scaled_font_px(13)
+            html = (
+                "<div style='font-family:Segoe UI;'>"
+                "<div style='font-weight:700;margin-bottom:4px;'>Sistema de ecuaciones ingresado:</div>"
+                f"<pre style='font-family:Consolas,monospace;font-size:{mono_pre}px;margin:0;'>"
+                + "\n".join(lines)
+                + "</pre></div>"
+            )
             try:
                 self.procedimiento.setHtml(html)
             except Exception:
@@ -580,6 +620,9 @@ class CramerWindow(QMainWindow):
             self.vars_box.setPlainText("Determinante cero: no aplicable. Se muestran los determinantes sustituidos si los desea ver.")
 
         # procedimiento principal (alto nivel) — ahora formateado en HTML + <pre>
+        mono_small = scaled_font_px(13)
+        mono_large = scaled_font_px(15)
+        formula_font = scaled_font_px(14)
         # Queremos: 1) Regla de Cramer (fórmula). 2) Con valores: mostrar |A|, |A1|, |A2|... con matrices dentro de barras
         def _matrix_block_html(M):
             # devuelve HTML con <pre> que representa la matriz entre barras
@@ -596,7 +639,11 @@ class CramerWindow(QMainWindow):
             for r in rows:
                 cells = [str(r[j]).rjust(widths[j]) for j in range(cols)]
                 lines.append("  | " + "  ".join(cells) + " |")
-            return "<pre style='font-family:Consolas,monospace;font-size:13px; margin:6px;'>" + "\n".join(lines) + "</pre>"
+            return (
+                f"<pre style='font-family:Consolas,monospace;font-size:{mono_small}px; margin:6px;'>"
+                + "\n".join(lines)
+                + "</pre>"
+            )
 
         def _matrix_block_html_aug(M, bvec):
             # Representación de matriz aumentada A | b con separador vertical antes de la última columna
@@ -621,7 +668,11 @@ class CramerWindow(QMainWindow):
                 bcell = b_cells[i].rjust(width_b)
                 # use a visible separator ' | ' between A and b
                 lines.append("  | " + "  ".join(cells) + "  | " + bcell + " |")
-            return "<pre style='font-family:Consolas,monospace;font-size:13px; margin:6px;'>" + "\n".join(lines) + "</pre>"
+            return (
+                f"<pre style='font-family:Consolas,monospace;font-size:{mono_small}px; margin:6px;'>"
+                + "\n".join(lines)
+                + "</pre>"
+            )
 
         # Cabecera con la fórmula
         html_parts = []
@@ -657,15 +708,20 @@ class CramerWindow(QMainWindow):
                     right = _fmt_fraction(beq[i]) if i < len(beq) else "0"
                     out.append(f"{left} = {right}")
                 return out
-            eq_block = "<div style='text-align:left; display:inline-block; margin:8px 0;'>" \
-                       + "<div style='font-weight:700; margin-bottom:4px;'>Sistema de ecuaciones ingresado:</div>" \
-                       + "<pre style='font-family:Consolas,monospace;font-size:13px;margin:0;'>" \
-                       + "\n".join(_eq_lines(A, b)) + "</pre></div>"
+            eq_block = (
+                "<div style='text-align:left; display:inline-block; margin:8px 0;'>"
+                "<div style='font-weight:700; margin-bottom:4px;'>Sistema de ecuaciones ingresado:</div>"
+                f"<pre style='font-family:Consolas,monospace;font-size:{mono_small}px;margin:0;'>"
+                + "\n".join(_eq_lines(A, b))
+                + "</pre></div>"
+            )
             html_parts.append(eq_block)
         except Exception:
             pass
         html_parts.append("<h3 style='margin:6px 0;'>Regla de Cramer (fórmula):</h3>")
-        html_parts.append("<div style='font-size:14px; margin-bottom:10px;'>Para i = 1, ..., n: <b>x<sub>i</sub> = |A<sub>i</sub>| / |A|</b></div>")
+        html_parts.append(
+            f"<div style='font-size:{formula_font}px; margin-bottom:10px;'>Para i = 1, ..., n: <b>x<sub>i</sub> = |A<sub>i</sub>| / |A|</b></div>"
+        )
 
         # Mostrar primero la matriz aumentada centrada (A | b)
         html_parts.append("<div style='width:100%; text-align:center; margin-bottom:6px;'>")
@@ -720,7 +776,9 @@ class CramerWindow(QMainWindow):
                 frac = f"|A{i+1}| / |A| = {_fmt_fraction(detk)} / {_fmt_fraction(detA)} = {_fmt_fraction(val)}"
                 sol_html_lines.append(left + frac)
         # usar <pre> para mantener alineación y un recuadro un poco más grande
-        html_parts.append("<pre style='font-family:Consolas,monospace; font-size:15px; text-align:left; display:inline-block; padding:12px; margin-top:8px; border:1px solid #ddd; border-radius:6px; background:#fff;'>")
+        html_parts.append(
+            f"<pre style='font-family:Consolas,monospace; font-size:{mono_large}px; text-align:left; display:inline-block; padding:12px; margin-top:8px; border:1px solid #ddd; border-radius:6px; background:#fff;'>"
+        )
         html_parts.append("\n".join(sol_html_lines))
         html_parts.append("</pre>")
 

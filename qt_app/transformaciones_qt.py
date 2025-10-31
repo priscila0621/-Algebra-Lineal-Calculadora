@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from fractions import Fraction
+from .theme import bind_font_scale_stylesheet
 
 
 def _fmt(x: Fraction) -> str:
@@ -261,7 +262,11 @@ class TransformacionesWindow(QMainWindow):
         lay.addWidget(self.gridA1)
 
         self.out1 = QTextEdit(); self.out1.setReadOnly(True)
-        self.out1.setStyleSheet("font-family:Consolas,monospace;font-size:12px;")
+        bind_font_scale_stylesheet(
+            self.out1,
+            "font-family:Consolas,monospace;font-size:{body}px;",
+            body=12,
+        )
         lay.addWidget(self.out1, 1)
 
         self.m1.valueChanged.connect(self._crear_Ax)
@@ -325,7 +330,11 @@ class TransformacionesWindow(QMainWindow):
         lay.addWidget(self.grid2)
 
         self.out2 = QTextEdit(); self.out2.setReadOnly(True)
-        self.out2.setStyleSheet("font-family:Consolas,monospace;font-size:12px;")
+        bind_font_scale_stylesheet(
+            self.out2,
+            "font-family:Consolas,monospace;font-size:{body}px;",
+            body=12,
+        )
         lay.addWidget(self.out2, 1)
 
         self.m2.valueChanged.connect(self._crear_base)
@@ -397,7 +406,11 @@ class TransformacionesWindow(QMainWindow):
         lay.addWidget(self.grid3)
 
         self.out3 = QTextEdit(); self.out3.setReadOnly(True)
-        self.out3.setStyleSheet("font-family:Consolas,monospace;font-size:12px;")
+        bind_font_scale_stylesheet(
+            self.out3,
+            "font-family:Consolas,monospace;font-size:{body}px;",
+            body=12,
+        )
         lay.addWidget(self.out3, 1)
 
         self.m3.valueChanged.connect(self._crear_linealidad)
@@ -419,7 +432,11 @@ class TransformacionesWindow(QMainWindow):
         lay.addWidget(self.grid4)
 
         self.out4 = QTextEdit(); self.out4.setReadOnly(True)
-        self.out4.setStyleSheet("font-family:Consolas,monospace;font-size:12px;")
+        bind_font_scale_stylesheet(
+            self.out4,
+            "font-family:Consolas,monospace;font-size:{body}px;",
+            body=12,
+        )
         lay.addWidget(self.out4, 1)
 
         self.m4.valueChanged.connect(self._crear_axb)

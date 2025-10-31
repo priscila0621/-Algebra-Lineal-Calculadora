@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from fractions import Fraction
 from independencia_lineal import son_linealmente_independientes
+from .theme import bind_font_scale_stylesheet
 
 
 class IndependenciaWindow(QMainWindow):
@@ -50,7 +51,11 @@ class IndependenciaWindow(QMainWindow):
         btns.addStretch(1)
 
         self.out = QTextEdit(); self.out.setReadOnly(True)
-        self.out.setStyleSheet("font-family:Consolas,monospace;font-size:12px;")
+        bind_font_scale_stylesheet(
+            self.out,
+            "font-family:Consolas,monospace;font-size:{body}px;",
+            body=12,
+        )
         lay.addWidget(self.out, 1)
 
         self._rebuild()

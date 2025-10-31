@@ -5,6 +5,7 @@
 )
 from PySide6.QtCore import Qt
 from fractions import Fraction
+from .theme import bind_font_scale_stylesheet
 
 
 def _parse_fraction(s: str) -> Fraction:
@@ -24,7 +25,11 @@ def _matrix_widget(parent: QWidget, mat):
         for j, val in enumerate(row):
             lbl = QLabel(str(val))
             lbl.setAlignment(Qt.AlignCenter)
-            lbl.setStyleSheet("background:#ffffff;border:1px solid #ccc;padding:6px;font-family:Segoe UI;font-size:14px;color:#000;font-weight:600;")
+            bind_font_scale_stylesheet(
+                lbl,
+                "background:#ffffff;border:1px solid #ccc;padding:6px;font-family:Segoe UI;font-size:{body}px;color:#000;font-weight:600;",
+                body=14,
+            )
             grid.addWidget(lbl, i, j)
     return wrapper
 
@@ -77,7 +82,11 @@ class _BaseMatrixWindow(QMainWindow):
 
         # Caja de texto con pasos/explicaciones (ya existente)
         self.result_box = QTextEdit(); self.result_box.setReadOnly(True)
-        self.result_box.setStyleSheet("font-family:Consolas,monospace;font-size:12px;")
+        bind_font_scale_stylesheet(
+            self.result_box,
+            "font-family:Consolas,monospace;font-size:{body}px;",
+            body=12,
+        )
         self.lay.addWidget(self.result_box, 1)
 
         self.entries = []
@@ -163,7 +172,11 @@ class _BaseMatrixWindow(QMainWindow):
             pass
         # añadir título y matriz
         lbl = QLabel(title)
-        lbl.setStyleSheet("font-weight:bold;font-size:14px;padding:6px;")
+        bind_font_scale_stylesheet(
+            lbl,
+            "font-weight:bold;font-size:{body}px;padding:6px;",
+            body=14,
+        )
         self.result_matrix_layout.addWidget(lbl, 0)
         matw = _matrix_widget(self, M)
         self.result_matrix_layout.addWidget(matw, 1)

@@ -1,4 +1,6 @@
-from PySide6.QtWidgets import QApplication, QCheckBox
+import weakref
+
+from PySide6.QtWidgets import QApplication, QCheckBox, QComboBox
 from PySide6.QtGui import (
     QPalette,
     QColor,
@@ -17,12 +19,106 @@ from PySide6.QtCore import (
     QRectF,
     QPointF,
     QAbstractAnimation,
+    Signal,
+    QObject,
 )
+
+
+class _FontScaleBus(QObject):
+    fontScaleChanged = Signal(float)
+
+
+_font_bus = _FontScaleBus()
+
+
+def _clamp_font_scale(value: float) -> float:
+    try:
+        num = float(value)
+    except Exception:
+        num = 1.0
+    return max(0.8, min(1.6, num))
+
+
+def current_font_scale(app: QApplication) -> float:
+    scale = app.property("font_scale")
+    if scale is None:
+        scale = 1.0
+        app.setProperty("font_scale", scale)
+    return _clamp_font_scale(scale)
+
+
+def font_scale_signal():
+    return _font_bus.fontScaleChanged
+
+
+def set_font_scale(app: QApplication, scale: float) -> None:
+    scale = _clamp_font_scale(scale)
+    if current_font_scale(app) == scale:
+        return
+    app.setProperty("font_scale", scale)
+    apply_theme(app, current_mode(app))
+    font_scale_signal().emit(scale)
+
+
+def _scaled_px(base: int, scale: float) -> int:
+    return max(8, int(round(base * scale)))
+
+
+def bind_font_scale(widget, updater):
+    """Registra una función que se invocará cuando cambie el escalado."""
+    ref = weakref.ref(widget)
+
+    def _wrapped(scale):
+        obj = ref()
+        if obj is None:
+            try:
+                font_scale_signal().disconnect(_wrapped)
+            except Exception:
+                pass
+            return
+        updater(obj, scale)
+
+    font_scale_signal().connect(_wrapped)
+
+    def _cleanup(*_args):
+        try:
+            font_scale_signal().disconnect(_wrapped)
+        except Exception:
+            pass
+
+    widget.destroyed.connect(_cleanup)
+    updater(widget, current_font_scale(QApplication.instance()))
+
+
+def bind_font_scale_stylesheet(widget, template: str, **size_map: int):
+    """Aplica una hoja de estilo con tamaños escalables.
+
+    template debe contener placeholders {nombre}px; size_map asocia nombre->tamaño base.
+    """
+
+    def _apply(w, scale):
+        values = {name: _scaled_px(base, scale) for name, base in size_map.items()}
+        w.setStyleSheet(template.format(**values))
+
+    bind_font_scale(widget, _apply)
+
+
+def scaled_font_px(base: int) -> int:
+    app = QApplication.instance()
+    if app is None:
+        return base
+    return _scaled_px(base, current_font_scale(app))
 
 
 def apply_theme(app: QApplication, mode: str = "light") -> None:
     app.setStyle("Fusion")
     app.setProperty("theme_mode", mode)
+    scale = current_font_scale(app)
+    base_font_size = _scaled_px(11, scale)
+    title_font = _scaled_px(28, scale)
+    subtitle_font = _scaled_px(14, scale)
+    button_font = _scaled_px(14, scale)
+    back_button_font = _scaled_px(20, scale)
 
     palette = QPalette()
     if mode == "dark":
@@ -47,28 +143,28 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
         palette.setColor(QPalette.PlaceholderText, QColor("#8F8697"))
 
         app.setPalette(palette)
-        app.setFont(QFont("Segoe UI", 11))
+        app.setFont(QFont("Segoe UI", base_font_size))
         app.setStyleSheet(
-            """
-            QWidget { background: #1F1D22; color: #F7F4F1; }
-            QMainWindow { background: #1F1D22; }
-            QFrame#Card { background: #15131A; border: 1px solid #3A3542; border-radius: 16px; }
-            QLabel#Title { font-size: 28px; font-weight: 700; color: #F7F4F1; }
-            QLabel#Subtitle { font-size: 14px; color: #B9AFC0; }
-            QPushButton {
+            f"""
+            QWidget {{ background: #1F1D22; color: #F7F4F1; }}
+            QMainWindow {{ background: #1F1D22; }}
+            QFrame#Card {{ background: #15131A; border: 1px solid #3A3542; border-radius: 16px; }}
+            QLabel#Title {{ font-size: {title_font}px; font-weight: 700; color: #F7F4F1; }}
+            QLabel#Subtitle {{ font-size: {subtitle_font}px; color: #B9AFC0; }}
+            QPushButton {{
                 background: #B07A8C;
                 color: #ffffff;
                 border: none;
                 border-radius: 10px;
                 padding: 10px 20px;
                 min-height: 40px;
-                font-size: 14px;
+                font-size: {button_font}px;
                 font-weight: 600;
-            }
-            QPushButton:hover { background: #9A5D73; }
-            QPushButton:pressed { background: #834C63; }
-            QPushButton:disabled { background: #3A3542; color: #8F8697; }
-            QPushButton#BackButton {
+            }}
+            QPushButton:hover {{ background: #9A5D73; }}
+            QPushButton:pressed {{ background: #834C63; }}
+            QPushButton:disabled {{ background: #3A3542; color: #8F8697; }}
+            QPushButton#BackButton {{
                 min-height: 42px;
                 min-width: 42px;
                 max-height: 42px;
@@ -76,46 +172,46 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
                 border-radius: 12px;
                 background: #B07A8C;
                 color: #FFFFFF;
-                font-size: 20px;
+                font-size: {back_button_font}px;
                 font-weight: 700;
-            }
-            QPushButton#BackButton:hover { background: #9A5D73; }
-            QPushButton#BackButton:pressed { background: #834C63; }
-            QLineEdit, QSpinBox, QTextEdit, QPlainTextEdit, QComboBox {
+            }}
+            QPushButton#BackButton:hover {{ background: #9A5D73; }}
+            QPushButton#BackButton:pressed {{ background: #834C63; }}
+            QLineEdit, QSpinBox, QTextEdit, QPlainTextEdit, QComboBox {{
                 border: 1px solid #3A3542;
                 border-radius: 8px;
                 padding: 6px 10px;
                 background: #1F1D22;
                 color: #F7F4F1;
-            }
-            QLineEdit:focus, QSpinBox:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {
+            }}
+            QLineEdit:focus, QSpinBox:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {{
                 border: 1px solid #B07A8C;
-            }
-            QComboBox QListView {
+            }}
+            QComboBox QListView {{
                 background: #15131A;
                 border: 1px solid #3A3542;
                 selection-background-color: #B07A8C;
                 selection-color: #ffffff;
-            }
-            QScrollArea { border: none; }
-            QTextEdit { border: 1px solid #3A3542; border-radius: 8px; background: #1F1D22; color: #F7F4F1; }
-            QGroupBox { border: 1px solid #3A3542; border-radius: 10px; margin-top: 12px; }
-            QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 4px; color: #B9AFC0; }
-            QTabWidget::pane { border: 1px solid #3A3542; border-radius: 10px; background: #1F1D22; }
-            QFrame#NavPanel {
+            }}
+            QScrollArea {{ border: none; }}
+            QTextEdit {{ border: 1px solid #3A3542; border-radius: 8px; background: #1F1D22; color: #F7F4F1; }}
+            QGroupBox {{ border: 1px solid #3A3542; border-radius: 10px; margin-top: 12px; }}
+            QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 4px; color: #B9AFC0; }}
+            QTabWidget::pane {{ border: 1px solid #3A3542; border-radius: 10px; background: #1F1D22; }}
+            QFrame#NavPanel {{
                 background: #201E25;
                 border: 1px solid #3A3542;
                 border-radius: 18px;
-            }
-            QFrame#Card QLabel { background: transparent; }
-            QFrame#NavPanel QLabel { background: transparent; }
-            QFrame#TopNav {
+            }}
+            QFrame#Card QLabel {{ background: transparent; }}
+            QFrame#NavPanel QLabel {{ background: transparent; }}
+            QFrame#TopNav {{
                 background: #15131A;
                 border: 1px solid #3A3542;
                 border-radius: 12px;
-            }
-            QFrame#TopNav QPushButton { min-width: 120px; }
-            QTabBar::tab {
+            }}
+            QFrame#TopNav QPushButton {{ min-width: 120px; }}
+            QTabBar::tab {{
                 background: #1F1D22;
                 color: #F7F4F1;
                 padding: 8px 16px;
@@ -124,9 +220,9 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
                 margin-right: 4px;
-            }
-            QTabBar::tab:selected { background: #B07A8C; color: #ffffff; }
-            QTabBar::tab:hover { background: #9A5D73; }
+            }}
+            QTabBar::tab:selected {{ background: #B07A8C; color: #ffffff; }}
+            QTabBar::tab:hover {{ background: #9A5D73; }}
             """
         )
     else:
@@ -149,28 +245,28 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
         palette.setColor(QPalette.HighlightedText, QColor("#FFFFFF"))
         palette.setColor(QPalette.PlaceholderText, QColor("#B09CA7"))
         app.setPalette(palette)
-        app.setFont(QFont("Segoe UI", 11))
+        app.setFont(QFont("Segoe UI", base_font_size))
         app.setStyleSheet(
-            """
-            QWidget { background: #FAF7F5; color: #4F3A47; }
-            QMainWindow { background: #FAF7F5; }
-            QFrame#Card { background: #F1E6E4; border: 1px solid #D9C8C5; border-radius: 16px; }
-            QLabel#Title { font-size: 28px; font-weight: 700; color: #6E4B5E; }
-            QLabel#Subtitle { font-size: 14px; color: #A78A94; }
-            QPushButton {
+            f"""
+            QWidget {{ background: #FAF7F5; color: #4F3A47; }}
+            QMainWindow {{ background: #FAF7F5; }}
+            QFrame#Card {{ background: #F1E6E4; border: 1px solid #D9C8C5; border-radius: 16px; }}
+            QLabel#Title {{ font-size: {title_font}px; font-weight: 700; color: #6E4B5E; }}
+            QLabel#Subtitle {{ font-size: {subtitle_font}px; color: #A78A94; }}
+            QPushButton {{
                 background: #B07A8C;
                 color: #ffffff;
                 border: none;
                 border-radius: 10px;
                 padding: 10px 20px;
                 min-height: 40px;
-                font-size: 14px;
+                font-size: {button_font}px;
                 font-weight: 600;
-            }
-            QPushButton:hover { background: #9A5D73; }
-            QPushButton:pressed { background: #834C63; }
-            QPushButton:disabled { background: #E5D9D7; color: #BBA9AE; }
-            QPushButton#BackButton {
+            }}
+            QPushButton:hover {{ background: #9A5D73; }}
+            QPushButton:pressed {{ background: #834C63; }}
+            QPushButton:disabled {{ background: #E5D9D7; color: #BBA9AE; }}
+            QPushButton#BackButton {{
                 min-height: 42px;
                 min-width: 42px;
                 max-height: 42px;
@@ -178,33 +274,33 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
                 border-radius: 12px;
                 background: #B07A8C;
                 color: #FFFFFF;
-                font-size: 20px;
+                font-size: {back_button_font}px;
                 font-weight: 700;
-            }
-            QPushButton#BackButton:hover { background: #9A5D73; }
-            QPushButton#BackButton:pressed { background: #834C63; }
-            QLineEdit, QSpinBox, QTextEdit, QPlainTextEdit, QComboBox {
+            }}
+            QPushButton#BackButton:hover {{ background: #9A5D73; }}
+            QPushButton#BackButton:pressed {{ background: #834C63; }}
+            QLineEdit, QSpinBox, QTextEdit, QPlainTextEdit, QComboBox {{
                 border: 1px solid #D9C8C5;
                 border-radius: 8px;
                 padding: 6px 10px;
                 background: #FFFFFF;
                 color: #4F3A47;
-            }
-            QLineEdit:focus, QSpinBox:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {
+            }}
+            QLineEdit:focus, QSpinBox:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {{
                 border: 1px solid #B07A8C;
-            }
-            QComboBox QListView {
+            }}
+            QComboBox QListView {{
                 background: #FFFFFF;
                 border: 1px solid #D9C8C5;
                 selection-background-color: #B07A8C;
                 selection-color: #ffffff;
-            }
-            QScrollArea { border: none; }
-            QTextEdit { border: 1px solid #D9C8C5; border-radius: 8px; background: #FFFFFF; }
-            QGroupBox { border: 1px solid #D9C8C5; border-radius: 10px; margin-top: 12px; }
-            QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 4px; color: #A78A94; }
-            QTabWidget::pane { border: 1px solid #D9C8C5; border-radius: 12px; background: #FFFFFF; }
-            QTabBar::tab {
+            }}
+            QScrollArea {{ border: none; }}
+            QTextEdit {{ border: 1px solid #D9C8C5; border-radius: 8px; background: #FFFFFF; }}
+            QGroupBox {{ border: 1px solid #D9C8C5; border-radius: 10px; margin-top: 12px; }}
+            QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 4px; color: #A78A94; }}
+            QTabWidget::pane {{ border: 1px solid #D9C8C5; border-radius: 12px; background: #FFFFFF; }}
+            QTabBar::tab {{
                 min-width: 120px;
                 background: #F1E6E4;
                 color: #6E4B5E;
@@ -214,22 +310,22 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
                 margin-right: 4px;
-            }
-            QTabBar::tab:selected { background: #B07A8C; color: #ffffff; }
-            QTabBar::tab:hover { background: #9A5D73; color: #ffffff; }
-            QFrame#NavPanel {
+            }}
+            QTabBar::tab:selected {{ background: #B07A8C; color: #ffffff; }}
+            QTabBar::tab:hover {{ background: #9A5D73; color: #ffffff; }}
+            QFrame#NavPanel {{
                 background: #F1E6E4;
                 border: 1px solid #D9C8C5;
                 border-radius: 18px;
-            }
-            QFrame#Card QLabel { background: transparent; }
-            QFrame#NavPanel QLabel { background: transparent; }
-            QFrame#TopNav {
+            }}
+            QFrame#Card QLabel {{ background: transparent; }}
+            QFrame#NavPanel QLabel {{ background: transparent; }}
+            QFrame#TopNav {{
                 background: #F1E6E4;
                 border: 1px solid #D9C8C5;
                 border-radius: 12px;
-            }
-            QFrame#TopNav QPushButton { min-width: 120px; }
+            }}
+            QFrame#TopNav QPushButton {{ min-width: 120px; }}
             """
         )
 
@@ -373,3 +469,50 @@ def install_toggle_shortcut(window) -> None:
             sw.blockSignals(False)
 
     sc.activated.connect(_activate)
+
+
+def make_font_scale_selector(parent_widget) -> QComboBox:
+    """Devuelve un combo para ajustar el tamaño de letra global."""
+    app = QApplication.instance()
+    combo = QComboBox(parent_widget)
+    combo.setObjectName("FontScaleSelector")
+    combo.setToolTip("Ajustar el tamaño de letra de toda la aplicación")
+    combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+    options = [
+        ("Letra compacta", 0.9),
+        ("Letra estándar", 1.0),
+        ("Letra grande", 1.2),
+        ("Letra extra grande", 1.4),
+    ]
+    for label, value in options:
+        combo.addItem(label, value)
+
+    def _sync(scale=None):
+        if scale is None:
+            scale = current_font_scale(app)
+        # Buscar la opción más cercana
+        idx = min(
+            range(combo.count()),
+            key=lambda i: abs(combo.itemData(i) - scale),
+            default=1,
+        )
+        combo.blockSignals(True)
+        combo.setCurrentIndex(idx)
+        combo.blockSignals(False)
+
+    _sync()
+
+    combo.currentIndexChanged.connect(
+        lambda idx: set_font_scale(app, combo.itemData(idx))
+    )
+
+    font_scale_signal().connect(_sync)
+
+    def _cleanup(*_args):
+        try:
+            font_scale_signal().disconnect(_sync)
+        except Exception:
+            pass
+
+    combo.destroyed.connect(_cleanup)
+    return combo
