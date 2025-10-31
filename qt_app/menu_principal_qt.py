@@ -13,12 +13,8 @@ from .menu_matrices_qt import MenuMatricesWindow
 from .menu_sistemas_qt import MenuSistemasWindow
 from .independencia_qt import IndependenciaWindow
 from .transformaciones_qt import TransformacionesWindow
-from .theme import (
-    make_theme_toggle_button,
-    install_toggle_shortcut,
-    bind_font_scale_stylesheet,
-    make_font_scale_selector,
-)
+from .theme import install_toggle_shortcut, bind_font_scale_stylesheet
+from .settings_qt import open_settings_dialog
 
 
 class MenuPrincipalWindow(QMainWindow):
@@ -92,13 +88,10 @@ class MenuPrincipalWindow(QMainWindow):
 
         top_bar = QHBoxLayout()
         top_bar.addStretch(1)
-        font_selector = make_font_scale_selector(self)
-        font_selector.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        top_bar.addWidget(font_selector, 0, Qt.AlignVCenter)
-        top_bar.addSpacing(12)
-        toggle = make_theme_toggle_button(self)
-        toggle.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        top_bar.addWidget(toggle, 0, Qt.AlignVCenter)
+        settings_btn = QPushButton("Configuracion")
+        settings_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        settings_btn.clicked.connect(self._open_settings)
+        top_bar.addWidget(settings_btn, 0, Qt.AlignVCenter)
         content_lay.addLayout(top_bar)
 
         hero = QHBoxLayout()
@@ -187,3 +180,6 @@ class MenuPrincipalWindow(QMainWindow):
     def _open_transformaciones(self):
         self.w = TransformacionesWindow(parent=self)
         self.w.showMaximized()
+
+    def _open_settings(self):
+        open_settings_dialog(self)

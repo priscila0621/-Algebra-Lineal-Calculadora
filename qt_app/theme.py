@@ -1,6 +1,6 @@
 import weakref
 
-from PySide6.QtWidgets import QApplication, QCheckBox, QComboBox
+from PySide6.QtWidgets import QApplication, QCheckBox
 from PySide6.QtGui import (
     QPalette,
     QColor,
@@ -28,7 +28,12 @@ class _FontScaleBus(QObject):
     fontScaleChanged = Signal(float)
 
 
+class _ThemeBus(QObject):
+    themeChanged = Signal(str)
+
+
 _font_bus = _FontScaleBus()
+_theme_bus = _ThemeBus()
 
 
 def _clamp_font_scale(value: float) -> float:
@@ -51,6 +56,10 @@ def font_scale_signal():
     return _font_bus.fontScaleChanged
 
 
+def theme_changed_signal():
+    return _theme_bus.themeChanged
+
+
 def set_font_scale(app: QApplication, scale: float) -> None:
     scale = _clamp_font_scale(scale)
     if current_font_scale(app) == scale:
@@ -62,6 +71,22 @@ def set_font_scale(app: QApplication, scale: float) -> None:
 
 def _scaled_px(base: int, scale: float) -> int:
     return max(8, int(round(base * scale)))
+
+
+def current_font_family(app: QApplication) -> str:
+    family = app.property("font_family")
+    if not family:
+        family = "Segoe UI"
+        app.setProperty("font_family", family)
+    return str(family)
+
+
+def set_font_family(app: QApplication, family: str) -> None:
+    family = str(family or "Segoe UI")
+    if current_font_family(app) == family:
+        return
+    app.setProperty("font_family", family)
+    apply_theme(app, current_mode(app))
 
 
 def bind_font_scale(widget, updater):
@@ -120,6 +145,7 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
     button_font = _scaled_px(14, scale)
     back_button_font = _scaled_px(20, scale)
 
+    family = current_font_family(app)
     palette = QPalette()
     if mode == "dark":
         # Modo oscuro complementario (dusty rose como acento)
@@ -143,7 +169,7 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
         palette.setColor(QPalette.PlaceholderText, QColor("#8F8697"))
 
         app.setPalette(palette)
-        app.setFont(QFont("Segoe UI", base_font_size))
+        app.setFont(QFont(family, base_font_size))
         app.setStyleSheet(
             f"""
             QWidget {{ background: #1F1D22; color: #F7F4F1; }}
@@ -245,7 +271,7 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
         palette.setColor(QPalette.HighlightedText, QColor("#FFFFFF"))
         palette.setColor(QPalette.PlaceholderText, QColor("#B09CA7"))
         app.setPalette(palette)
-        app.setFont(QFont("Segoe UI", base_font_size))
+        app.setFont(QFont(family, base_font_size))
         app.setStyleSheet(
             f"""
             QWidget {{ background: #FAF7F5; color: #4F3A47; }}
@@ -328,6 +354,10 @@ def apply_theme(app: QApplication, mode: str = "light") -> None:
             QFrame#TopNav QPushButton {{ min-width: 120px; }}
             """
         )
+    try:
+        _theme_bus.themeChanged.emit(mode)
+    except Exception:
+        pass
 
 
 def current_mode(app: QApplication) -> str:
@@ -452,6 +482,18 @@ def make_theme_toggle_button(parent_widget) -> QCheckBox:
         _sync_state()
 
     switch.toggled.connect(lambda _checked: _toggle())
+    def _on_theme_changed(_mode):
+        _sync_state()
+
+    theme_changed_signal().connect(_on_theme_changed)
+
+    def _cleanup(*_args):
+        try:
+            theme_changed_signal().disconnect(_on_theme_changed)
+        except Exception:
+            pass
+
+    switch.destroyed.connect(_cleanup)
     _sync_state()
     return switch
 
@@ -469,50 +511,3 @@ def install_toggle_shortcut(window) -> None:
             sw.blockSignals(False)
 
     sc.activated.connect(_activate)
-
-
-def make_font_scale_selector(parent_widget) -> QComboBox:
-    """Devuelve un combo para ajustar el tamaño de letra global."""
-    app = QApplication.instance()
-    combo = QComboBox(parent_widget)
-    combo.setObjectName("FontScaleSelector")
-    combo.setToolTip("Ajustar el tamaño de letra de toda la aplicación")
-    combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-    options = [
-        ("Letra compacta", 0.9),
-        ("Letra estándar", 1.0),
-        ("Letra grande", 1.2),
-        ("Letra extra grande", 1.4),
-    ]
-    for label, value in options:
-        combo.addItem(label, value)
-
-    def _sync(scale=None):
-        if scale is None:
-            scale = current_font_scale(app)
-        # Buscar la opción más cercana
-        idx = min(
-            range(combo.count()),
-            key=lambda i: abs(combo.itemData(i) - scale),
-            default=1,
-        )
-        combo.blockSignals(True)
-        combo.setCurrentIndex(idx)
-        combo.blockSignals(False)
-
-    _sync()
-
-    combo.currentIndexChanged.connect(
-        lambda idx: set_font_scale(app, combo.itemData(idx))
-    )
-
-    font_scale_signal().connect(_sync)
-
-    def _cleanup(*_args):
-        try:
-            font_scale_signal().disconnect(_sync)
-        except Exception:
-            pass
-
-    combo.destroyed.connect(_cleanup)
-    return combo

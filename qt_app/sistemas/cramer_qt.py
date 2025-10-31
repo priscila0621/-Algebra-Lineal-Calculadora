@@ -4,13 +4,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QPlainTextEdit
 from PySide6.QtCore import Qt
-from ..theme import (
-    make_theme_toggle_button,
-    install_toggle_shortcut,
-    bind_font_scale_stylesheet,
-    scaled_font_px,
-    make_font_scale_selector,
-)
+from ..theme import install_toggle_shortcut, bind_font_scale_stylesheet, scaled_font_px
+from ..settings_qt import open_settings_dialog
 from fractions import Fraction
 from qt_app.matrices_qt import determinante_con_pasos as determinante_con_pasos_ascii
 import re
@@ -196,9 +191,9 @@ class CramerWindow(QMainWindow):
         self.btn_ingresar_ecuaciones.clicked.connect(self._open_ecuaciones_dialog)
         top.addWidget(self.btn_ingresar_ecuaciones)
         top.addSpacing(18)
-        font_selector = make_font_scale_selector(self)
-        font_selector.setMinimumWidth(160)
-        top.addWidget(font_selector)
+        self.btn_settings = QPushButton("Configuracion")
+        self.btn_settings.clicked.connect(self._open_settings)
+        top.addWidget(self.btn_settings)
         top.addStretch(1)
 
         self.scroll = QScrollArea()
@@ -558,6 +553,9 @@ class CramerWindow(QMainWindow):
         w.resize(820, 620)
         w.show()
         self._detalles_window = w
+
+    def _open_settings(self):
+        open_settings_dialog(self)
 
     def _resolver(self):
         try:

@@ -7,7 +7,8 @@ from PySide6.QtCore import Qt
 from fractions import Fraction
 from copy import deepcopy
 import re
-from ..theme import bind_font_scale_stylesheet, make_font_scale_selector
+from ..theme import bind_font_scale_stylesheet
+from ..settings_qt import open_settings_dialog
 
 
 def _fmt(x):
@@ -111,9 +112,9 @@ class GaussJordanWindow(QMainWindow):
         self.btn_ingresar_ecuaciones.clicked.connect(self._open_ecuaciones_dialog)
         top.addWidget(self.btn_ingresar_ecuaciones)
         top.addSpacing(18)
-        font_selector = make_font_scale_selector(self)
-        font_selector.setMinimumWidth(160)
-        top.addWidget(font_selector)
+        self.btn_settings = QPushButton("Configuracion")
+        self.btn_settings.clicked.connect(self._open_settings)
+        top.addWidget(self.btn_settings)
         # Botón de verificación de independencia retirado a petición del usuario
         top.addStretch(1)
 
@@ -271,6 +272,9 @@ class GaussJordanWindow(QMainWindow):
             for j in range(columnas):
                 val = M[i][j]
                 self._entries[i][j].setText(str(val))
+
+    def _open_settings(self):
+        open_settings_dialog(self)
 
     def _parse_equations_text(self, text: str, num_vars_expected: int):
         """Parsea texto con una ecuación por línea y devuelve matriz aumentada de Fraction.

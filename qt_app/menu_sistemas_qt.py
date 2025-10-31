@@ -8,7 +8,8 @@ from PySide6.QtWidgets import (
     QFrame,
 )
 from PySide6.QtCore import Qt
-from .theme import make_theme_toggle_button, install_toggle_shortcut, make_font_scale_selector
+from .theme import install_toggle_shortcut
+from .settings_qt import open_settings_dialog
 
 
 class MenuSistemasWindow(QMainWindow):
@@ -49,10 +50,9 @@ class MenuSistemasWindow(QMainWindow):
         nav_lay.addWidget(btn_cramer)
 
         nav_lay.addStretch(1)
-        font_selector = make_font_scale_selector(self)
-        nav_lay.addWidget(font_selector, 0, Qt.AlignVCenter)
-        nav_lay.addSpacing(8)
-        nav_lay.addWidget(make_theme_toggle_button(self), 0, Qt.AlignVCenter)
+        btn_settings = QPushButton("Configuracion")
+        btn_settings.clicked.connect(self._open_settings)
+        nav_lay.addWidget(btn_settings, 0, Qt.AlignVCenter)
         outer_lay.addWidget(nav)
 
         card = QFrame()
@@ -108,5 +108,8 @@ class MenuSistemasWindow(QMainWindow):
         w = CramerWindow(parent=self)
         w.showMaximized()
         self._child = w
+
+    def _open_settings(self):
+        open_settings_dialog(self)
 
 
