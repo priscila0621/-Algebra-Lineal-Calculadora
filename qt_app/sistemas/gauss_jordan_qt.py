@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QGridLayout, QLineEdit, QTextEdit, QMessageBox, QFrame,
-    QDialog, QDialogButtonBox, QPlainTextEdit
+    QDialog, QDialogButtonBox, QPlainTextEdit, QSlider
 )
 from PySide6.QtCore import Qt
 from fractions import Fraction
@@ -47,18 +47,61 @@ class GaussJordanWindow(QMainWindow):
         self.btn_back = QPushButton("Volver")
         self.btn_back.clicked.connect(self._go_back)
         top.addWidget(self.btn_back)
-        self.btn_add_row = QPushButton("+ Fila")
-        self.btn_add_row.clicked.connect(lambda: self._change_rows(1))
-        top.addWidget(self.btn_add_row)
-        self.btn_del_row = QPushButton("- Fila")
-        self.btn_del_row.clicked.connect(lambda: self._change_rows(-1))
-        top.addWidget(self.btn_del_row)
-        self.btn_add_col = QPushButton("+ Columna")
-        self.btn_add_col.clicked.connect(lambda: self._change_cols(1))
-        top.addWidget(self.btn_add_col)
-        self.btn_del_col = QPushButton("- Columna")
-        self.btn_del_col.clicked.connect(lambda: self._change_cols(-1))
-        top.addWidget(self.btn_del_col)
+        top.addSpacing(24)
+        row_container = QWidget()
+        row_layout = QVBoxLayout(row_container)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(4)
+        row_label = QLabel("Filas")
+        row_label.setAlignment(Qt.AlignHCenter)
+        row_layout.addWidget(row_label)
+        row_controls = QHBoxLayout()
+        row_controls.setContentsMargins(0, 0, 0, 0)
+        row_controls.setSpacing(6)
+        self.row_slider = QSlider(Qt.Horizontal)
+        self.row_slider.setRange(1, 12)
+        self.row_slider.setSingleStep(1)
+        self.row_slider.setPageStep(1)
+        self.row_slider.setTickInterval(1)
+        self.row_slider.setTickPosition(QSlider.TicksBelow)
+        self.row_slider.setValue(self._rows)
+        self.row_slider.valueChanged.connect(self._on_rows_changed)
+        self.row_slider.setFixedWidth(160)
+        row_controls.addWidget(self.row_slider, 1)
+        self.row_value_label = QLabel(str(self._rows))
+        self.row_value_label.setFixedWidth(32)
+        self.row_value_label.setAlignment(Qt.AlignCenter)
+        row_controls.addWidget(self.row_value_label)
+        row_layout.addLayout(row_controls)
+        top.addWidget(row_container)
+        top.addSpacing(18)
+        col_container = QWidget()
+        col_layout = QVBoxLayout(col_container)
+        col_layout.setContentsMargins(0, 0, 0, 0)
+        col_layout.setSpacing(4)
+        col_label = QLabel("Columnas")
+        col_label.setAlignment(Qt.AlignHCenter)
+        col_layout.addWidget(col_label)
+        col_controls = QHBoxLayout()
+        col_controls.setContentsMargins(0, 0, 0, 0)
+        col_controls.setSpacing(6)
+        self.col_slider = QSlider(Qt.Horizontal)
+        self.col_slider.setRange(1, 12)
+        self.col_slider.setSingleStep(1)
+        self.col_slider.setPageStep(1)
+        self.col_slider.setTickInterval(1)
+        self.col_slider.setTickPosition(QSlider.TicksBelow)
+        self.col_slider.setValue(self._cols_no_b)
+        self.col_slider.valueChanged.connect(self._on_cols_changed)
+        self.col_slider.setFixedWidth(160)
+        col_controls.addWidget(self.col_slider, 1)
+        self.col_value_label = QLabel(str(self._cols_no_b))
+        self.col_value_label.setFixedWidth(32)
+        self.col_value_label.setAlignment(Qt.AlignCenter)
+        col_controls.addWidget(self.col_value_label)
+        col_layout.addLayout(col_controls)
+        top.addWidget(col_container)
+        top.addSpacing(24)
         self.btn_limpiar = QPushButton("Limpiar pantalla")
         self.btn_limpiar.clicked.connect(self._limpiar)
         top.addWidget(self.btn_limpiar)
@@ -151,12 +194,20 @@ class GaussJordanWindow(QMainWindow):
         # Vista previa inicial
         self._preview_sistema()
 
-    def _change_rows(self, delta: int):
-        self._rows = max(1, self._rows + delta)
+    def _on_rows_changed(self, value: int):
+        value = max(1, value)
+        self.row_value_label.setText(str(value))
+        if value == self._rows:
+            return
+        self._rows = value
         self._rebuild_grid(self._rows, self._cols_no_b + 1)
 
-    def _change_cols(self, delta: int):
-        self._cols_no_b = max(1, self._cols_no_b + delta)
+    def _on_cols_changed(self, value: int):
+        value = max(1, value)
+        self.col_value_label.setText(str(value))
+        if value == self._cols_no_b:
+            return
+        self._cols_no_b = value
         self._rebuild_grid(self._rows, self._cols_no_b + 1)
 
     # --- ingreso por ecuaciones (nuevo): abrir diálogo y parsear ---
@@ -194,6 +245,18 @@ class GaussJordanWindow(QMainWindow):
         # reconstruir y llenar
         self._rows = filas
         self._cols_no_b = columnas - 1
+        if self.row_slider.maximum() < self._rows:
+            self.row_slider.setMaximum(self._rows)
+        if self.col_slider.maximum() < self._cols_no_b:
+            self.col_slider.setMaximum(self._cols_no_b)
+        self.row_slider.blockSignals(True)
+        self.row_slider.setValue(self._rows)
+        self.row_slider.blockSignals(False)
+        self.row_value_label.setText(str(self._rows))
+        self.col_slider.blockSignals(True)
+        self.col_slider.setValue(self._cols_no_b)
+        self.col_slider.blockSignals(False)
+        self.col_value_label.setText(str(self._cols_no_b))
         self._rebuild_grid(self._rows, self._cols_no_b + 1)
         for i in range(filas):
             for j in range(columnas):
